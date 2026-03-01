@@ -1,0 +1,741 @@
+/**
+ * 시즌 보상 시스템 - 도트 경마 v5.1
+ * 
+ * 기능:
+ * - 52주 시즌 진행 및 추적
+ * - 순위 및 티어 시스템
+ * - 시즌 종료 보상 계산 및 지급
+ * - 랭킹 히스토리 관리
+ * 
+ * 저장소: localStorage (키: dot_racing_season)
+ * 
+ * @version 5.1.0
+ * @author 도겜유튜브
+ */
+
+(function() {
+  'use strict';
+
+  // 로컬스토리지 키
+  const SEASON_KEY = 'dot_racing_season';
+
+  /**
+   * 시즌 보상 설정
+   */
+  const REWARDS = {
+    // 순위별 보상
+    ranking: {
+      1: { money: 500000, title: '챔피언', badge: 'gold', tier: 'G1_CHAMPION' },
+      2: { money: 300000, title: '러너업', badge: 'silver', tier: 'G2_MASTER' },
+      3: { money: 200000, title: '메달리스트', badge: 'bronze', tier: 'G3_EXPERT' },
+      4: { money: 100000, title: 'TOP 10' },
+      5: { money: 80000, title: 'TOP 10' },
+      6: { money: 70000, title: 'TOP 10' },
+      7: { money: 60000, title: 'TOP 10' },
+      8: { money: 50000, title: 'TOP 10' },
+      9: { money: 50000, title: 'TOP 10' },
+      10: { money: 50000, title: 'TOP 10' }
+    },
+    // 추가 보상
+    bonuses: {
+      endBonusRate: 0.10,              // 시즌 수익의 10% 보너스
+      g1Participation: { count: 5, reward: 50000 },  // G1 5회 출전 달성
+      undefeatedWin: 100000              // 무승부 우승 (미사용)
+    },
+    // 티어 조건
+    tiers: {
+      G1_CHAMPION: { rank: 1, g1Races: 5 },
+      G2_MASTER: { rankPercent: 0.05, g2Races: 8 },
+      G3_EXPERT: { rankPercent: 0.15, g3Races: 10 }
+    }
+  };
+
+  /**
+   * 기본 시즌 데이터 구조
+   */
+  const defaultSeasonData = {
+    year: 2026,           // 시즌 연도
+    week: 1,             // 시즌 주 (1-52)
+    totalPrize: 0,        // 총 상금
+    races: [],            // 경기 기록
+    seasonId: '2026_S1', // 시즌 ID
+    startDate: new Date().toISOString(),  // 시즌 시작일
+    
+    // 사용자 통계
+    totalBet: 0,         // 총 베팅액
+    totalWin: 0,         // 총 당첨금
+    currentRank: null,   // 현재 순위
+    rankHistory: [],     // 순위 히스토리
+    totalEntries: 0,     // 총 출전 수
+    
+    // 등급별 출전 수
+    g1Count: 0, g2Count: 0, g3Count: 0, openCount: 0, grade1Count: 0, grade2Count: 0,
+    
+    // 성과
+    wins: 0,             // 승리 수
+    places: 0,           // 3위 이내 수
+    totalScore: 0,        // 총 점수 (승점제)
+    
+    // 보상 관련
+    titles: [],         // 획득한 칭호
+    badges: [],         // 획득한 배지
+    tier: null,         // 현재 티어
+    pendingRewards: [],  // 미수령 보상
+    totalRewards: 0,     // 총 받은 보상
+    lastRewardDate: null,// 마지막 보상 지급일
+    
+    // 추세
+    last10RacesTrend: 0,  // 최근 10경주 추세
+    
+    version: '5.1.0'
+  };
+
+  // 점수 계산 함수 (replay-data.js와 동일)
+  function calculateScore(position) {
+    if (!position || position > 16) return 10;
+    const scores = { 1: 100, 2: 50, 3: 25 };
+    if (scores[position]) return scores[position];
+    return 14 - (position - 4);
+  }
+
+  // 현재 시즌 데이터
+  let seasonData = null;
+
+  /**
+   * 시즌 시스템 초기화
+   * 
+   * @returns {Object} 현재 시즌 데이터
+   */
+  async function initSeason() {
+    if (seasonData) return seasonData;
+    
+    // 로컬 저장소에서 먼저 로드
+    try {
+      const saved = localStorage.getItem(SEASON_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.version !== defaultSeasonData.version) {
+          seasonData = { ...defaultSeasonData, ...migrateSeason(parsed) };
+        } else {
+          seasonData = { ...defaultSeasonData, ...parsed };
+        }
+      } else {
+        seasonData = { ...defaultSeasonData };
+      }
+    } catch (e) {
+      console.warn('시즌 로드 실패:', e);
+      seasonData = { ...defaultSeasonData };
+    }
+    
+    // 로그인 상태면 Firestore에서 동기화
+    await syncFromCloud();
+    
+    return seasonData;
+  }
+  
+  /**
+   * Firestore에서 시즌 데이터 동기화
+   */
+  async function syncFromCloud() {
+    if (!window.StatsSync || !window.StatsSync.uid) {
+      console.log('[SeasonSystem] Not logged in, using local data');
+      return;
+    }
+    
+    try {
+      const db = window.db;
+      const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js');
+      const userSeasonRef = doc(db, 'users', window.StatsSync.uid, 'stats', 'season');
+      const seasonSnap = await getDoc(userSeasonRef);
+      
+      if (seasonSnap.exists()) {
+        const cloudData = seasonSnap.data();
+        console.log('[SeasonSystem] Loaded season data from cloud');
+        
+        // 클라우드 데이터로 업데이트
+        seasonData = { 
+          ...defaultSeasonData, 
+          ...seasonData,
+          ...cloudData,
+          totalEntries: cloudData.gameCount || cloudData.totalEntries || 0,
+          week: cloudData.week || 1,
+          year: cloudData.year || 2026,
+          seasonNumber: cloudData.seasonNumber || 1
+        };
+        
+        // localStorage에도 저장
+        saveSeason();
+      }
+    } catch (e) {
+      console.warn('[SeasonSystem] Cloud sync failed:', e);
+    }
+  }
+
+  /**
+   * 시즌 데이터 마이그레이션
+   * 
+   * @param {Object} data - 마이그레이션할 데이터
+   * @returns {Object} 마이그레이션된 데이터
+   */
+  function migrateSeason(data) {
+    const migrated = { ...data };
+    // 모든 기본 필드가 있는지 확인
+    Object.keys(defaultSeasonData).forEach(k => {
+      if (migrated[k] === undefined) migrated[k] = defaultSeasonData[k];
+    });
+    migrated.version = defaultSeasonData.version;
+    return migrated;
+  }
+
+  /**
+   * 시즌 데이터 저장
+   */
+  async function saveSeason() {
+    if (!seasonData) initSeason();
+    try {
+      localStorage.setItem(SEASON_KEY, JSON.stringify(seasonData));
+    } catch (e) {
+      console.warn('시즌 저장 실패:', e);
+    }
+    
+    // Firestore에도 저장 (로그인 상태면)
+    await syncToCloud();
+  }
+  
+  /**
+   * Firestore에 시즌 데이터 동기화
+   */
+  async function syncToCloud() {
+    if (!window.StatsSync || !window.StatsSync.uid) {
+      return;
+    }
+    
+    try {
+      const db = window.db;
+      const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js');
+      const userSeasonRef = doc(db, 'users', window.StatsSync.uid, 'stats', 'season');
+      
+      await setDoc(userSeasonRef, {
+        seasonNumber: seasonData.seasonNumber || Math.ceil(seasonData.week / 52),
+        week: seasonData.week,
+        year: seasonData.year,
+        gameCount: seasonData.totalEntries,
+        totalPrize: seasonData.totalPrize,
+        wins: seasonData.wins,
+        totalScore: seasonData.totalScore,
+        startDate: seasonData.startDate,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      console.log('[SeasonSystem] Season data saved to cloud');
+    } catch (e) {
+      console.warn('[SeasonSystem] Cloud save failed:', e);
+    }
+  }
+
+  /**
+   * 시즌 업데이트
+   * 경기 종료 후 호출
+   * 
+   * @param {Object} params - 경기 결과 파라미터
+   */
+  async function updateSeason(params) {
+    if (!seasonData) initSeason();
+    
+    const { 
+      order = [], 
+      betInfo = {}, 
+      grade = 'OPEN', 
+      distance = 1200, 
+      track = 'seoul' 
+    } = params;
+    
+    const { totalBet = 0, totalReturn = 0 } = betInfo;
+    
+    // 사용자의 말 인덱스 찾기
+    const userHorseIdx = window.userTickets && window.userTickets.length > 0 ? window.userTickets[0].horseIndex : -1;
+    const rank = userHorseIdx >= 0 ? order.indexOf(userHorseIdx) + 1 : null;
+    const pnl = totalReturn - totalBet;
+
+    // 기본 통계 업데이트
+    seasonData.totalBet += totalBet;
+    seasonData.totalWin += pnl;
+
+    // 등급별 출전 수
+    if (grade === 'G1') seasonData.g1Count++;
+    else if (grade === 'G2') seasonData.g2Count++;
+    else if (grade === 'G3') seasonData.g3Count++;
+    else if (grade === 'OPEN') seasonData.openCount++;
+    else if (grade === '1등급') seasonData.grade1Count++;
+    else if (grade === '2등급') seasonData.grade2Count++;
+
+    // 순위 기록 (베팅/당첨 여부와 관계없이 출전수로 카운트)
+    if (rank) {
+      const score = calculateScore(rank);
+      seasonData.races.push({ 
+        raceNo: seasonData.totalEntries + 1, 
+        grade, 
+        distance, 
+        rank, 
+        pnl, 
+        track, 
+        score,
+        date: new Date().toISOString() 
+      });
+      seasonData.rankHistory.push(rank);
+      seasonData.totalScore += score;
+      
+      // 히스토리 50개 유지
+      if (seasonData.rankHistory.length > 50) seasonData.rankHistory.shift();
+      
+      if (rank === 1) seasonData.wins++;
+      else if (rank <= 3) seasonData.places++;
+    }
+    
+    // 경기 출전 수 증가 (베팅/당첨 여부와 무관)
+    seasonData.totalEntries++;
+    updateTrend();
+    
+    // 가상 순위 계산
+    seasonData.currentRank = calculateVirtualRank();
+    saveSeason();
+  }
+
+  /**
+   * 추세 업데이트
+   * 최근 10경주의 순위 변화 추적
+   */
+  function updateTrend() {
+    const recent = seasonData.rankHistory.slice(-10);
+    if (recent.length < 5) {
+      seasonData.last10RacesTrend = 0;
+      return;
+    }
+    
+    const mid = Math.floor(recent.length / 2);
+    const recentAvg = recent.slice(mid).reduce((a, b) => a + b, 0) / recent.slice(mid).length;
+    const prevAvg = recent.slice(0, mid).reduce((a, b) => a + b, 0) / recent.slice(0, mid).length;
+    seasonData.last10RacesTrend = parseFloat((prevAvg - recentAvg).toFixed(2));
+  }
+
+  /**
+   * 가상 순위 계산
+   * 실제 순위는 Firestore에서 가져오지만,offline 시 가상값 사용
+   * 
+   * @returns {number|null} 가상 순위
+   */
+  function calculateVirtualRank() {
+    if (seasonData.totalEntries === 0) return null;
+    
+    const winRate = seasonData.wins / seasonData.totalEntries;
+    // 기본 순위 + 승률 보정
+    const baseRank = Math.floor(Math.random() * 100) + 1;
+    const adjustedRank = Math.max(1, Math.floor(baseRank * (1 - winRate * 0.3)));
+    return Math.min(adjustedRank, 200);
+  }
+
+  /**
+   * 보상 계산
+   * 시즌 종료 시 받을 보상을 계산
+   * 
+   * @returns {Object} 보상 정보
+   */
+  function calculateRewards() {
+    if (!seasonData) initSeason();
+    
+    const rewards = [];
+    const rank = seasonData.currentRank || 100;
+    const pnl = seasonData.totalWin;
+
+    // 순위별 보상
+    if (rank <= 10 && REWARDS.ranking[rank]) {
+      const r = REWARDS.ranking[rank];
+      rewards.push({ 
+        type: 'rank', 
+        rank, 
+        title: r.title, 
+        badge: r.badge, 
+        tier: r.tier, 
+        money: r.money 
+      });
+    }
+
+    // 시즌 수익 보너스 (10%)
+    if (pnl > 0) {
+      const bonus = Math.floor(pnl * REWARDS.bonuses.endBonusRate);
+      rewards.push({ 
+        type: 'bonus', 
+        name: '시즌 수익 보너스', 
+        money: bonus 
+      });
+    }
+
+    // G1 출전 달성 보상
+    if (seasonData.g1Count >= REWARDS.bonuses.g1Participation.count) {
+      rewards.push({ 
+        type: 'bonus', 
+        name: 'G1 출전 달성', 
+        money: REWARDS.bonuses.g1Participation.reward 
+      });
+    }
+
+    // 특별 칭호
+    if (seasonData.wins >= 10) rewards.push({ type: 'title', title: ' Decade Winner', icon: '🏆' });
+    if (seasonData.g1Count >= 5) rewards.push({ type: 'badge', name: 'G1 Veteran', icon: '⭐' });
+    if (seasonData.last10RacesTrend > 2) rewards.push({ type: 'title', title: ' 상승세', icon: '📈' });
+
+    // 총 보상금 계산
+    const totalMoney = rewards.reduce((sum, r) => sum + (r.money || 0), 0);
+    
+    return { rank, totalEntries: seasonData.totalEntries, rewards, totalMoney };
+  }
+
+  /**
+   * 보상 청구
+   * 시즌 종료 시 보상을 실제로 지급
+   * 
+   * @returns {number} 지급된 총 보상금
+   */
+  function claimRewards() {
+    if (!seasonData) initSeason();
+    
+    const rewardInfo = calculateRewards();
+    
+    // 지갑에 추가
+    if (rewardInfo.totalMoney > 0 && typeof wallet !== 'undefined' && window.handleWallet) {
+      window.handleWallet(rewardInfo.totalMoney);
+    }
+    
+    // 칭호/배지 추가
+    rewardInfo.rewards.filter(r => r.title && !seasonData.titles.includes(r.title))
+      .forEach(r => seasonData.titles.push(r.title));
+    
+    rewardInfo.rewards.filter(r => r.badge && !seasonData.badges.includes(r.badge))
+      .forEach(r => seasonData.badges.push(r.badge));
+    
+    // 티어 설정
+    const topReward = rewardInfo.rewards.find(r => r.tier);
+    if (topReward) seasonData.tier = topReward.tier;
+
+    // 초기화
+    seasonData.pendingRewards = [];
+    seasonData.totalRewards += rewardInfo.totalMoney;
+    seasonData.lastRewardDate = new Date().toISOString();
+    saveSeason();
+    
+    return rewardInfo.totalMoney;
+  }
+
+  /**
+   * 시즌 종료 확인
+   * 52주 경과 시 종료 모달 표시
+   * 
+   * @returns {boolean} 종료 여부
+   */
+  function checkSeasonEnd() {
+    if (!seasonData) initSeason();
+    if (seasonData.week > 52) {
+      showSeasonEndModal();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 시즌 종료 모달 표시
+   */
+  function showSeasonEndModal() {
+    const modal = document.getElementById('seasonEndModal');
+    const rewardInfo = calculateRewards();
+    
+    if (!modal) {
+      alert('시즌 종료! ' + rewardInfo.totalMoney.toLocaleString() + '원 보상');
+      return;
+    }
+    
+    // 순위 표시
+    const rankEl = document.getElementById('finalRank');
+    if (rankEl) rankEl.textContent = rewardInfo.rank;
+    
+    // 보상 목록
+    const rewardsEl = document.getElementById('seasonEndRewards');
+    if (rewardsEl) {
+      rewardsEl.innerHTML = rewardInfo.rewards.map(r => {
+        if (r.type === 'rank') {
+          return '<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #1f2940;">' +
+            '<span>' + r.rank + '위 - ' + r.title + '</span>' +
+            '<span class="money">+' + r.money.toLocaleString() + '원</span></div>';
+        }
+        if (r.type === 'bonus') {
+          return '<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #1f2940;">' +
+            '<span>' + r.name + '</span>' +
+            '<span class="money">+' + r.money.toLocaleString() + '원</span></div>';
+        }
+        if (r.type === 'title' || r.type === 'badge') {
+          return '<div class="pill" style="margin:4px;">' + (r.icon || '') + ' ' + (r.title || r.name) + '</div>';
+        }
+        return '';
+      }).join('');
+    }
+    
+    // 총손익
+    const pnlEl = document.getElementById('endTotalPnl');
+    if (pnlEl) pnlEl.textContent = (seasonData.totalWin >= 0 ? '+' : '') + seasonData.totalWin.toLocaleString();
+    
+    // 총 보상
+    const rewardTotalEl = document.getElementById('endTotalReward');
+    if (rewardTotalEl) rewardTotalEl.textContent = '+' + rewardInfo.totalMoney.toLocaleString();
+    
+    modal.style.display = 'flex';
+  }
+
+  /**
+   * 새 시즌 시작
+   * 이전 시즌 보상 청구하고 새 시즌 초기화
+   */
+  function startNewSeason() {
+    claimRewards();
+    
+    const modal = document.getElementById('seasonEndModal');
+    if (modal) modal.style.display = 'none';
+    
+    // 새 시즌 데이터
+    const newYear = seasonData.year + (Math.floor((seasonData.week) / 52) > 0 ? 1 : 0);
+    const newWeek = seasonData.week > 52 ? 1 : seasonData.week;
+    
+    seasonData = { 
+      ...defaultSeasonData, 
+      year: newYear,
+      week: newWeek,
+      seasonId: seasonData.year + '_S' + Math.ceil(seasonData.week / 52), 
+      startDate: new Date().toISOString(),
+      // 기존 데이터 유지
+      totalRewards: seasonData.totalRewards,
+      titles: seasonData.titles,
+      badges: seasonData.badges,
+      tier: seasonData.tier
+    };
+    
+    saveSeason();
+    renderSeasonPanel();
+  }
+
+  /**
+   * 시즌 패널 렌더링
+   * 시즌 탭의 모든 UI 업데이트
+   */
+  function renderSeasonPanel() {
+    if (!seasonData) initSeason();
+    const s = seasonData;
+    
+    // 기본 정보
+    document.getElementById('seasonWeek').textContent = s.week;
+    document.getElementById('seasonRank').textContent = s.currentRank || '-';
+    document.getElementById('seasonEntries').textContent = s.totalEntries;
+    document.getElementById('seasonG1').textContent = s.g1Count;
+    document.getElementById('seasonWins').textContent = s.wins;
+    document.getElementById('seasonScore').textContent = s.totalScore || 0;
+    document.getElementById('seasonPnl').textContent = (s.totalWin >= 0 ? '+' : '') + s.totalWin.toLocaleString();
+    
+    // 진행바
+    const progressEl = document.getElementById('seasonProgressBar');
+    if (progressEl) progressEl.style.width = ((s.week / 52) * 100) + '%';
+    
+    // 티어 표시
+    const tierEl = document.getElementById('seasonTier');
+    if (tierEl) {
+      const tierNames = { G1_CHAMPION: '챔피언', G2_MASTER: '마스터', G3_EXPERT: '익스퍼트' };
+      const tierColors = { G1_CHAMPION: '#FFD700', G2_MASTER: '#C0C0C0', G3_EXPERT: '#CD7F32' };
+      tierEl.textContent = s.tier ? (tierNames[s.tier] || s.tier) : '일반';
+      tierEl.style.background = s.tier ? tierColors[s.tier] : '#1e2a53';
+      tierEl.style.color = s.tier ? '#333' : '#dbe1ff';
+    }
+    
+    // 추세
+    const trendEl = document.getElementById('seasonTrend');
+    if (trendEl) {
+      if (s.last10RacesTrend > 1) trendEl.textContent = '📈 상승 (+' + s.last10RacesTrend + ')';
+      else if (s.last10RacesTrend < -1) trendEl.textContent = '📉 하락 (' + s.last10RacesTrend + ')';
+      else trendEl.textContent = '➡️ 보합';
+    }
+    
+    // 칭호/배지
+    const titlesEl = document.getElementById('seasonTitles');
+    if (titlesEl) {
+      const allTitles = [...s.titles];
+      if (s.wins >= 10) allTitles.push('🏆 Decade Winner');
+      if (s.g1Count >= 5) allTitles.push('⭐ G1 Veteran');
+      titlesEl.innerHTML = allTitles.length === 0 
+        ? '<span class="badge" style="opacity:0.5;">아직 없음</span>' 
+        : allTitles.map(t => '<span class="badge" style="background:#6C5CE7;color:#fff;">' + t + '</span>').join(' ');
+    }
+    
+    // 예상 보상
+    const previewEl = document.getElementById('seasonRewardPreview');
+    if (previewEl) {
+      const rewards = calculateRewards();
+      previewEl.innerHTML = rewards.rewards.map(r => {
+        if (r.type === 'rank') {
+          return '<div class="row" style="justify-content:space-between;padding:4px 0;">' +
+            '<span>' + r.rank + '위 예상</span>' +
+            '<span class="money">+' + r.money.toLocaleString() + '원</span></div>';
+        }
+        if (r.type === 'bonus') {
+          return '<div class="row" style="justify-content:space-between;padding:4px 0;">' +
+            '<span>' + r.name + '</span>' +
+            '<span class="money">+' + r.money.toLocaleString() + '원</span></div>';
+        }
+        return '';
+      }).join('') || '<div class="small" style="opacity:0.7;">시즌 종료 시 예상 보상이 여기에 표시됩니다</div>';
+    }
+    
+    // 추세 차트
+    renderSeasonTrendChart();
+  }
+
+  /**
+   * 시즌 추세 차트 렌더링
+   */
+  function renderSeasonTrendChart() {
+    const container = document.getElementById('chartSeasonTrend');
+    if (!container || !seasonData || seasonData.races.length < 5) {
+      if (container) container.innerHTML = '<div style="padding:20px;text-align:center;color:#8890b0;">데이터 부족</div>';
+      return;
+    }
+    
+    const data = seasonData.races.slice(-20).map((r, i) => ({ 
+      label: 'R' + (seasonData.totalEntries - 20 + i + 1), 
+      value: r.pnl 
+    }));
+     
+    container.innerHTML = window.ChartEngine.createLineChart({ 
+      data, 
+      width: Math.min(500, container.offsetWidth || 450), 
+      height: 120, 
+      color: '#6C5CE7', 
+      showArea: true, 
+      showPoints: true 
+    });
+  }
+
+  /**
+   * Firestore에서 시즌 정보 로드
+   */
+  async function loadFromCloud() {
+    if (typeof window.StatsSync === 'undefined') {
+      console.log('[Season] StatsSync not available, using localStorage');
+      return false;
+    }
+    
+    try {
+      const cloudData = await window.StatsSync.loadFromCloud();
+      if (cloudData && cloudData.season) {
+        const s = cloudData.season;
+        // Firestore 데이터로 시즌 정보 업데이트
+        seasonData = {
+          ...seasonData,
+          seasonNumber: s.seasonNumber || s.seasonNumber || 1,
+          week: s.week || 1,
+          year: s.year || 2026,
+          totalPrize: s.totalPrize || 0,
+          wins: s.wins || 0,
+          g1Count: s.g1Count || 0,
+          g2Count: s.g2Count || 0,
+          g3Count: s.g3Count || 0,
+          openCount: s.openCount || 0,
+          grade1Count: s.grade1Count || 0,
+          grade2Count: s.grade2Count || 0,
+          totalEntries: s.totalEntries || 0,
+          totalBet: s.totalBet || 0,
+          totalWin: s.totalWin || 0,
+          currentRank: s.currentRank || null,
+          tier: s.tier || null,
+          titles: s.titles || [],
+          badges: s.badges || [],
+          totalRewards: s.totalRewards || 0,
+          fromCloud: true // 클라우드에서 로드됨
+        };
+        
+        // localStorage에도 백업 저장
+        saveSeason();
+        renderSeasonPanel();
+        
+        console.log('[Season] Loaded from Firestore:', seasonData.seasonNumber, 'Week', seasonData.week);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[Season] Failed to load from cloud:', e);
+    }
+    return false;
+  }
+
+  /**
+   * 전체 시즌 데이터 반환 (StatsSync용)
+   */
+  function getSeasonData() {
+    return {
+      seasonNumber: seasonData?.seasonNumber || 1,
+      week: seasonData?.week || 1,
+      year: seasonData?.year || 2026,
+      gameCount: seasonData?.totalEntries || 0,
+      totalPrize: seasonData?.totalPrize || 0,
+      wins: seasonData?.wins || 0,
+      g1Count: seasonData?.g1Count || 0,
+      g2Count: seasonData?.g2Count || 0,
+      g3Count: seasonData?.g3Count || 0,
+      openCount: seasonData?.openCount || 0,
+      grade1Count: seasonData?.grade1Count || 0,
+      grade2Count: seasonData?.grade2Count || 0,
+      totalEntries: seasonData?.totalEntries || 0,
+      totalBet: seasonData?.totalBet || 0,
+      totalWin: seasonData?.totalWin || 0,
+      totalScore: seasonData?.totalScore || 0,
+      currentRank: seasonData?.currentRank || null,
+      tier: seasonData?.tier || null,
+      titles: seasonData?.titles || [],
+      badges: seasonData?.badges || [],
+      totalRewards: seasonData?.totalRewards || 0,
+      startDate: seasonData?.startDate || new Date().toISOString()
+    };
+  }
+
+  /**
+   * localStorage에서 시즌 정보 로드 (오프라인용)
+   */
+  function loadFromLocal() {
+    try {
+      const saved = localStorage.getItem('dot_racing_season');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        seasonData = { ...seasonData, ...parsed };
+        saveSeason();
+        renderSeasonPanel();
+        console.log('[Season] Loaded from localStorage:', seasonData.seasonNumber, 'Week', seasonData.week);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[Season] Failed to load from localStorage:', e);
+    }
+    return false;
+  }
+
+  /**
+   * 시즌 시스템 전역 객체
+   */
+  window.SeasonSystem = { 
+    init: initSeason,                    // 초기화
+    update: updateSeason,               // 업데이트
+    get: () => seasonData,              // 데이터 조회
+    getSeasonData: getSeasonData,        // 전체 시즌 데이터 반환
+    save: saveSeason,                   // 저장
+    loadFromCloud: loadFromCloud,       // Firestore에서 로드
+    loadFromLocal: loadFromLocal,       // localStorage에서 로드 (오프라인용)
+    calculateRewards: calculateRewards,  // 보상 계산
+    claimRewards: claimRewards,          // 보상 청구
+    checkSeasonEnd: checkSeasonEnd,     // 종료 확인
+    showEndModal: showSeasonEndModal,   // 종료 모달 표시
+    startNewSeason: startNewSeason,     // 새 시즌 시작
+    render: renderSeasonPanel           // 패널 렌더링
+  };
+
+})();

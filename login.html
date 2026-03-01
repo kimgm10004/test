@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>도트 경마 v5.1 - 로그인</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --bg: #0a0a12;
+    --panel: #0f1424;
+    --line: #1f2940;
+    --text: #c8d0ff;
+    --title: #ffffff;
+    --accent: #6C5CE7;
+    --accent-glow: rgba(108, 92, 231, 0.6);
+    --gold: #FFD700;
+    --neon-cyan: #00f5ff;
+    --neon-pink: #ff00ff;
+  }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .bg-animation {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background: 
+      radial-gradient(ellipse at 20% 80%, rgba(108, 92, 231, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(0, 245, 255, 0.08) 0%, transparent 60%),
+      var(--bg);
+  }
+  
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: orb-float 15s ease-in-out infinite;
+  }
+  
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+    background: var(--accent);
+    top: -150px;
+    left: -100px;
+    animation-delay: 0s;
+  }
+  
+  .orb-2 {
+    width: 300px;
+    height: 300px;
+    background: var(--neon-pink);
+    bottom: -100px;
+    right: -50px;
+    animation-delay: -5s;
+  }
+  
+  .orb-3 {
+    width: 250px;
+    height: 250px;
+    background: var(--neon-cyan);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-delay: -10s;
+  }
+  
+  @keyframes orb-float {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+    25% { transform: translate(30px, -30px) scale(1.1); opacity: 0.7; }
+    50% { transform: translate(-20px, 20px) scale(0.9); opacity: 0.4; }
+    75% { transform: translate(40px, 40px) scale(1.05); opacity: 0.6; }
+  }
+
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  
+  .star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle 2s ease-in-out infinite;
+  }
+  
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.5); }
+  }
+
+  .login-container {
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    perspective: 1000px;
+  }
+
+  .login-card {
+    background: linear-gradient(145deg, rgba(15, 20, 36, 0.95), rgba(10, 14, 28, 0.98));
+    border: 1px solid rgba(108, 92, 231, 0.3);
+    border-radius: 24px;
+    padding: 48px 40px;
+    text-align: center;
+    box-shadow: 
+      0 25px 80px rgba(0, 0, 0, 0.6),
+      0 0 40px rgba(108, 92, 231, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    transform: rotateX(5deg);
+    animation: card-float 6s ease-in-out infinite;
+  }
+  
+  @keyframes card-float {
+    0%, 100% { transform: rotateX(5deg) translateY(0); }
+    50% { transform: rotateX(5deg) translateY(-10px); }
+  }
+
+  .login-logo {
+    font-size: 64px;
+    margin-bottom: 8px;
+    animation: logo-pulse 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(108, 92, 231, 0.5));
+  }
+  
+  @keyframes logo-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  
+  .login-title {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #6C5CE7 50%, #00f5ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+  }
+  
+  .login-version {
+    font-size: 13px;
+    color: #6C5CE7;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+
+  .login-horse {
+    font-size: 36px;
+    margin: 20px 0;
+    animation: horse-racing 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+  }
+  
+  @keyframes horse-racing {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+  }
+  
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  
+  .divider-icon {
+    padding: 0 16px;
+    font-size: 18px;
+  }
+
+  .login-desc {
+    font-size: 14px;
+    color: #8890b0;
+    margin-bottom: 32px;
+    line-height: 1.8;
+  }
+  
+  .login-desc strong {
+    color: var(--accent);
+  }
+
+  .btn-google {
+    width: 100%;
+    padding: 16px 28px;
+    background: linear-gradient(135deg, #6C5CE7 0%, #a855f7 100%);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    transition: all 0.3s ease;
+    box-shadow: 
+      0 4px 20px rgba(108, 92, 231, 0.4),
+      0 0 40px rgba(108, 92, 231, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-google::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+  
+  .btn-google:hover::before {
+    transform: translateX(100%);
+  }
+  
+  .btn-google:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 
+      0 8px 30px rgba(108, 92, 231, 0.5),
+      0 0 60px rgba(108, 92, 231, 0.3);
+  }
+  
+  .btn-google:active {
+    transform: translateY(0) scale(0.98);
+  }
+  
+  .btn-google:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .google-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .benefits {
+    margin-top: 28px;
+    text-align: left;
+  }
+  
+  .benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #a0a8c0;
+  }
+  
+  .benefit-icon {
+    font-size: 16px;
+  }
+
+  .loading {
+    display: none;
+    margin-top: 24px;
+  }
+  
+  .loading.show {
+    display: block;
+  }
+  
+  .loader {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 16px;
+  }
+  
+  .loader-ring {
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    animation: loader-spin 1.5s linear infinite;
+  }
+  
+  .loader-ring:nth-child(1) {
+    border-top-color: #6C5CE7;
+    animation-delay: 0s;
+  }
+  
+  .loader-ring:nth-child(2) {
+    border-right-color: #00f5ff;
+    animation-delay: 0.2s;
+    inset: 4px;
+  }
+  
+  .loader-ring:nth-child(3) {
+    border-bottom-color: #ff00ff;
+    animation-delay: 0.4s;
+    inset: 8px;
+  }
+  
+  @keyframes loader-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .error {
+    display: none;
+    margin-top: 20px;
+    padding: 14px;
+    background: rgba(255, 122, 158, 0.1);
+    border: 1px solid rgba(255, 122, 158, 0.4);
+    border-radius: 10px;
+    color: #ff7a9e;
+    font-size: 13px;
+    animation: error-shake 0.5s ease;
+  }
+  
+  .error.show {
+    display: block;
+  }
+  
+  @keyframes error-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  .footer {
+    margin-top: 32px;
+    font-size: 12px;
+    color: #4a5068;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-animation">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="stars" id="stars"></div>
+
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-logo">🏇</div>
+    <h1 class="login-title">도트 경마</h1>
+    <div class="login-version">v5.1</div>
+    
+    <div class="login-horse">🏇 💨 🐴</div>
+    
+    <div class="divider">
+      <div class="divider-line"></div>
+      <div class="divider-icon">🎰</div>
+      <div class="divider-line"></div>
+    </div>
+    
+    <p class="login-desc">
+      경마에 오신 것을 환영합니다!<br>
+      <strong>Google 로그인</strong>하여 경마를 플레이하세요.<br>
+      데이터가 클라우드에 자동 저장됩니다.
+    </p>
+    
+    <button class="btn-google" id="btnGoogleLogin">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Google로 시작하기
+    </button>
+    
+    <div class="benefits">
+      <div class="benefit-item">
+        <span class="benefit-icon">☁️</span>
+        <span>클라우드 저장 - 어디서든 데이터 유지</span>
+      </div>
+      <div class="benefit-item">
+        <span class="benefit-icon">🏆</span>
+        <span>시즌 랭킹 - 전국 경마왕과 경쟁</span>
+      </div>
+      <div class="benefit-item">
+        <span class="benefit-icon">📊</span>
+        <span>상세 통계 - 내 성적 한눈에 보기</span>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading">
+      <div class="loader">
+        <div class="loader-ring"></div>
+        <div class="loader-ring"></div>
+        <div class="loader-ring"></div>
+      </div>
+      <div>로그인 처리 중...</div>
+    </div>
+    
+    <div class="error" id="error"></div>
+    
+    <div class="footer">
+      © 도검유튜브 | v5.1
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCDAkMPPoAKYZj4dS74eLJM0fuko_tcvhE",
+    authDomain: "authentication-2a265.firebaseapp.com",
+    projectId: "authentication-2a265",
+    storageBucket: "authentication-2a265.firebasestorage.app",
+    messagingSenderId: "710116433234",
+    appId: "1:710116433234:web:7d0e4ba9ddd1b13be72e8b",
+    measurementId: "G-MTKTT6KRVP"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  // 세션 지속성 설정 (자동 로그인)
+  await import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js').then(async ({ setPersistence, browserLocalPersistence }) => {
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('[Login] Session persistence set');
+  });
+
+  // 별 생성
+  const starsContainer = document.getElementById('stars');
+  for (let i = 0; i < 50; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 2 + 's';
+    star.style.opacity = Math.random() * 0.5 + 0.3;
+    starsContainer.appendChild(star);
+  }
+
+  // 이미 로그인 되어있으면 게임 화면으로 이동
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      console.log('[Login] Already logged in, redirecting to game...');
+      window.location.href = 'kra-v5-fixed.html';
+      return;
+    }
+  });
+
+  // 로그인 버튼
+  document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
+    const btn = document.getElementById('btnGoogleLogin');
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    
+    btn.disabled = true;
+    loading.classList.add('show');
+    error.classList.remove('show');
+    
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      console.log('[Login] Success:', user.uid);
+      
+      // Firestore에 사용자 문서 생성/업데이트
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          wallet: 0,
+          email: user.email,
+          photoURL: user.photoURL,
+          displayName: user.displayName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        console.log('[Login] New user created');
+      }
+      
+      // 게임 화면으로 리다이렉트
+      window.location.href = 'kra-v5-fixed.html';
+      
+    } catch (err) {
+      console.error('[Login] Error:', err);
+      btn.disabled = false;
+      loading.classList.remove('show');
+      error.textContent = '로그인 실패: ' + err.message;
+      error.classList.add('show');
+    }
+  });
+</script>
+
+</body>
+</html>

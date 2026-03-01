@@ -1,0 +1,907 @@
+/**
+ * NFT Horse System v1.0
+ * 도트경마 v5.2 - NFT 말 시스템
+ * 
+ * - NFT 말 발행
+ * - 소유권 관리
+ * - 마켓플레이스
+ * - 교환 시스템
+ * - 베팅 금액 전환
+ */
+
+// NFT 등급 정의
+const NFT_RARITIES = {
+  COMMON: {
+    name: '일반',
+    probability: 0.60,
+    purchasePrice: 10000,
+    priceRange: [8000, 20000],
+    statRange: [40, 60]
+  },
+  RARE: {
+    name: '레어',
+    probability: 0.25,
+    purchasePrice: 50000,
+    priceRange: [40000, 100000],
+    statRange: [60, 75]
+  },
+  EPIC: {
+    name: '에픽',
+    purchasePrice: 200000,
+    priceRange: [150000, 400000],
+    statRange: [75, 85]
+  },
+  LEGENDARY: {
+    name: '전설',
+    probability: 0.05,
+    purchasePrice: 1000000,
+    priceRange: [800000, 2000000],
+    statRange: [85, 100]
+  }
+};
+
+// 말 이름 목록
+const NFT_HORSE_NAMES = [
+  '불꽃질주', '천둥이', '황금빛', '달빛', '폭풍',
+  '무적의', ' السريع', '왕중왕', '미친', '초고속',
+  '태풍', '벼락', '화살', '광속', '瞬步',
+  '黑豹', '白馬', '赤兔', '驃騎', '天馬'
+];
+
+// 기수 이름 목록
+const NFT_JOCKEY_NAMES = [
+  '김 étab', '이ライダー', '박건마', '최명骑', '정스킬',
+  '한빠름', '오마', '신천재', '류마스터', '장传奇'
+];
+
+// NFT 시스템 클래스
+class NFTSystem {
+  constructor() {
+    this.myNFTs = [];
+    this.marketplaceNFTs = [];
+    this.currentTab = 'inventory';
+    // localStorage에서 NFT 로드
+    this.loadFromLocalStorage();
+  }
+
+  // localStorage에 NFT 저장
+  saveToLocalStorage() {
+    try {
+      localStorage.setItem('myNFTs', JSON.stringify(this.myNFTs));
+      console.log('[NFT] localStorage에 저장됨:', this.myNFTs.length, '개');
+    } catch (err) {
+      console.error('[NFT] localStorage 저장 실패:', err);
+    }
+  }
+
+  // localStorage에서 NFT 로드
+  loadFromLocalStorage() {
+    try {
+      const stored = localStorage.getItem('myNFTs');
+      if (stored) {
+        this.myNFTs = JSON.parse(stored);
+        console.log('[NFT] localStorage에서 로드:', this.myNFTs.length, '개');
+      }
+    } catch (err) {
+      console.error('[NFT] localStorage 로드 실패:', err);
+      this.myNFTs = [];
+    }
+    return this.myNFTs;
+  }
+
+  // 등급별 확률로 랜덤 등급 결정
+  getRandomRarity() {
+    const rand = Math.random();
+    let cumulative = 0;
+    
+    for (const [key, rarity] of Object.entries(NFT_RARITIES)) {
+      cumulative += rarity.probability;
+      if (rand < cumulative) {
+        return { key, ...rarity };
+      }
+    }
+    return { key: 'COMMON', ...NFT_RARITIES.COMMON };
+  }
+
+  // 랜덤 말 이름 생성
+  getRandomHorseName() {
+    return NFT_HORSE_NAMES[Math.floor(Math.random() * NFT_HORSE_NAMES.length)];
+  }
+
+  // 랜덤 기수 이름 생성
+  getRandomJockeyName() {
+    return NFT_JOCKEY_NAMES[Math.floor(Math.random() * NFT_JOCKEY_NAMES.length)];
+  }
+
+  // 랜덤 스탯 생성
+  getRandomStats(rarity) {
+    const [min, max] = rarity.statRange;
+    return {
+      speed: Math.floor(Math.random() * (max - min + 1)) + min,
+      stamina: Math.floor(Math.random() * (max - min + 1)) + min,
+      burst: Math.floor(Math.random() * (max - min + 1)) + min
+    };
+  }
+
+  // NFT 생성
+  async createNFT(type = 'HORSE', rarity = null) {
+    const nft = {
+      id: 'nft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      type: type,
+      name: type === 'HORSE' ? this.getRandomHorseName() : this.getRandomJockeyName(),
+      rarity: rarity || this.getRandomRarity(),
+      imageUrl: '',
+      createdAt: Date.now(),
+      ownerId: window.uid || 'anonymous',
+      isListed: false,
+      listedPrice: 0,
+      exchangeCode: null,
+      previousOwners: [window.uid || 'anonymous']
+    };
+
+    // 말인 경우 스탯 추가
+    if (type === 'HORSE') {
+      nft.stats = this.getRandomStats(nft.rarity);
+    }
+
+    // 이미지 생성 (Canvas)
+    nft.imageUrl = await this.generateNFTImage(nft);
+
+    return nft;
+  }
+
+  // NFT 이미지 생성 (Canvas)
+  async generateNFTImage(nft) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+
+      // 배경 그라데이션
+      const gradient = ctx.createLinearGradient(0, 0, 200, 200);
+      switch (nft.rarity.key) {
+        case 'LEGENDARY':
+          gradient.addColorStop(0, '#FFD700');
+          gradient.addColorStop(1, '#FF6B00');
+          break;
+        case 'EPIC':
+          gradient.addColorStop(0, '#9B59B6');
+          gradient.addColorStop(1, '#E74C3C');
+          break;
+        case 'RARE':
+          gradient.addColorStop(0, '#3498DB');
+          gradient.addColorStop(1, '#2ECC71');
+          break;
+        default:
+          gradient.addColorStop(0, '#95A5A6');
+          gradient.addColorStop(1, '#7F8C8D');
+      }
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 200, 200);
+
+      // 말 아이콘 (emoji)
+      ctx.font = '80px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(nft.type === 'HORSE' ? '🐴' : '🏇', 100, 110);
+
+      // 이름
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(nft.name, 100, 150);
+
+      // 등급 배지
+      ctx.font = 'bold 14px Arial';
+      ctx.fillStyle = '#FFFFFF';
+      const badgeText = nft.rarity.key === 'LEGENDARY' ? '★전설' :
+                        nft.rarity.key === 'EPIC' ? '♦에픽' :
+                        nft.rarity.key === 'RARE' ? '★레어' : '일반';
+      ctx.fillText(badgeText, 100, 180);
+
+      // 이미지를 데이터 URL로 변환
+      resolve(canvas.toDataURL('image/png'));
+    });
+  }
+
+// Firebase Firestore 연결 확인
+function checkFirebaseReady() {
+  return window.db && window.uid;
+}
+
+// localStorage에 NFT 저장
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem('myNFTs', JSON.stringify(this.myNFTs));
+    console.log('[NFT] localStorage에 저장됨:', this.myNFTs.length, '개');
+  } catch (err) {
+    console.error('[NFT] localStorage 저장 실패:', err);
+  }
+}
+
+// localStorage에서 NFT 로드
+function loadFromLocalStorage() {
+  try {
+    const stored = localStorage.getItem('myNFTs');
+    if (stored) {
+      this.myNFTs = JSON.parse(stored);
+      console.log('[NFT] localStorage에서 로드:', this.myNFTs.length, '개');
+    }
+  } catch (err) {
+    console.error('[NFT] localStorage 로드 실패:', err);
+    this.myNFTs = [];
+  }
+  return this.myNFTs;
+}
+
+// Firestore에 NFT 저장
+async function saveNFTToFirestore(nft) {
+  if (!checkFirebaseReady()) {
+    console.log('[NFT] Firebase 없음 - 로컬에만 저장');
+    this.myNFTs.push(nft);
+    this.saveToLocalStorage();
+    return nft;
+  }
+
+  try {
+    const userRef = window.db.collection('users').doc(window.uid)
+      .collection('nfts').doc(nft.id);
+    
+    await userRef.set({
+      ...nft,
+      createdAt: window.firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    this.myNFTs.push(nft);
+    this.saveToLocalStorage(); // localStorage에도 백업
+    console.log('[NFT] 저장 완료:', nft.id);
+    return nft;
+  } catch (err) {
+    console.error('[NFT] 저장 실패:', err);
+    this.myNFTs.push(nft);
+    this.saveToLocalStorage(); // localStorage에도 백업
+    return nft;
+  }
+}
+
+// Firestore에서 NFT 로드
+async function loadNFTsFromFirestore() {
+  if (!checkFirebaseReady()) {
+    console.log('[NFT] Firebase 없음 - 로컬에서 로드');
+    this.loadFromLocalStorage();
+    return this.myNFTs;
+  }
+
+  try {
+    const snapshot = await window.db.collection('users').doc(window.uid)
+      .collection('nfts').get();
+    
+    this.myNFTs = [];
+    snapshot.forEach(doc => {
+      this.myNFTs.push({ id: doc.id, ...doc.data() });
+    });
+
+    console.log('[NFT] 로드 완료:', this.myNFTs.length, '개');
+    return this.myNFTs;
+  } catch (err) {
+    console.error('[NFT] 로드 실패:', err);
+    this.loadFromLocalStorage();
+    return [];
+  }
+}
+
+// 마켓플레이스 NFT 로드
+async function loadMarketplaceNFTs() {
+  if (!checkFirebaseReady()) {
+    console.log('[NFT Market] Firebase 없음');
+    return [];
+  }
+
+    try {
+      // 모든 사용자의 판매 등록된 NFT 조회
+      const snapshot = await window.db.collectionGroup('nfts')
+        .where('isListed', '==', true)
+        .get();
+
+      this.marketplaceNFTs = [];
+      snapshot.forEach(doc => {
+        const nft = { id: doc.id, ...doc.data() };
+        if (nft.ownerId !== window.uid) {
+          this.marketplaceNFTs.push(nft);
+        }
+      });
+
+      console.log('[NFT Market] 로드 완료:', this.marketplaceNFTs.length, '개');
+      return this.marketplaceNFTs;
+    } catch (err) {
+      console.error('[NFT Market] 로드 실패:', err);
+      return [];
+    }
+  }
+
+  // NFT 구매
+  async purchaseNFT(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false, message: 'NFT를 찾을 수 없습니다' };
+
+    const price = nft.rarity.purchasePrice;
+    if (window.wallet < price) {
+      return { success: false, message: '잔액이 부족합니다' };
+    }
+
+    // 지갑 차감
+    window.wallet -= price;
+    document.getElementById('wallet').textContent = window.fmt(window.wallet);
+
+    // Firebase 동기화
+    if (window.FirebaseSync) {
+      window.FirebaseSync.saveWallet(window.wallet);
+    }
+
+    return { success: true, nft, message: '구매 완료!' };
+  }
+
+  // NFT 판매 등록
+  async listNFT(nftId, price) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false, message: 'NFT를 찾을 수 없습니다' };
+
+    if (!window.db || !window.uid) {
+      nft.isListed = true;
+      nft.listedPrice = price;
+      return { success: true, message: '로컬에 판매 등록됨' };
+    }
+
+    try {
+      const userRef = window.db.collection('users').doc(window.uid)
+        .collection('nfts').doc(nftId);
+      
+      await userRef.update({
+        isListed: true,
+        listedPrice: price
+      });
+
+      nft.isListed = true;
+      nft.listedPrice = price;
+
+      return { success: true, message: '마켓플레이스에 등록되었습니다' };
+    } catch (err) {
+      console.error('[NFT] 판매 등록 실패:', err);
+      return { success: false, message: '판매 등록 실패' };
+    }
+  }
+
+  // NFT 구매 (마켓플레이스)
+  async buyFromMarketplace(nftId) {
+    const nft = this.marketplaceNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false, message: 'NFT를 찾을 수 없습니다' };
+
+    const price = nft.listedPrice;
+    if (window.wallet < price) {
+      return { success: false, message: '잔액이 부족합니다' };
+    }
+
+    // 지갑 차감
+    window.wallet -= price;
+    document.getElementById('wallet').textContent = window.fmt(window.wallet);
+
+    // 소유권 이전
+    if (window.db && window.uid) {
+      try {
+        // 기존 소유주에게 금액 전송 (90%)
+        const sellerId = nft.ownerId;
+        const sellerRef = window.db.collection('users').doc(sellerId);
+        const sellerDoc = await sellerRef.get();
+        
+        if (sellerDoc.exists) {
+          const sellerData = sellerDoc.data();
+          const sellerWallet = (sellerData.wallet || 0) + Math.floor(price * 0.9);
+          await sellerRef.update({ wallet: sellerWallet });
+        }
+
+        // 새 소유주에게 NFT 이전
+        const nftRef = window.db.collection('users').doc(sellerId)
+          .collection('nfts').doc(nftId);
+        
+        await nftRef.update({
+          ownerId: window.uid,
+          isListed: false,
+          listedPrice: 0,
+          previousOwners: window.firebase.firestore.FieldValue.arrayUnion(sellerId)
+        });
+
+        // 로컬 데이터 업데이트
+        this.marketplaceNFTs = this.marketplaceNFTs.filter(n => n.id !== nftId);
+        nft.ownerId = window.uid;
+        nft.isListed = false;
+        this.myNFTs.push(nft);
+
+        // Firebase 동기화
+        if (window.FirebaseSync) {
+          window.FirebaseSync.saveWallet(window.wallet);
+        }
+
+        return { success: true, nft, message: '구매 완료!', earnings: Math.floor(price * 0.9) };
+      } catch (err) {
+        console.error('[NFT Market] 구매 실패:', err);
+        return { success: false, message: '구매 실패: ' + err.message };
+      }
+    }
+
+    return { success: true, nft, message: '로컬 구매 완료' };
+  }
+
+  // 교환 코드 생성
+  generateExchangeCode(nftId) {
+    const code = 'EXCHANGE-' + nftId + '-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    return code;
+  }
+
+  // 교환 코드 설정
+  async setExchangeCode(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false, message: 'NFT를 찾을 수 없습니다' };
+
+    const code = this.generateExchangeCode(nftId);
+    nft.exchangeCode = code;
+
+    if (window.db && window.uid) {
+      try {
+        const userRef = window.db.collection('users').doc(window.uid)
+          .collection('nfts').doc(nftId);
+        await userRef.update({ exchangeCode: code });
+      } catch (err) {
+        console.error('[NFT] 교환 코드 설정 실패:', err);
+      }
+    }
+
+    // 클립보드에 복사
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    }
+
+    return { success: true, code, message: '교환 코드가 생성되었습니다' };
+  }
+
+  // 교환 코드로 NFT 받기
+  async receiveViaExchangeCode(code) {
+    if (!code || !code.startsWith('EXCHANGE-')) {
+      return { success: false, message: '유효하지 않은 교환 코드입니다' };
+    }
+
+    const parts = code.split('-');
+    if (parts.length !== 3) {
+      return { success: false, message: '유효하지 않은 교환 코드입니다' };
+    }
+
+    const nftId = parts[1];
+    const expectedCode = code;
+
+    if (!window.db || !window.uid) {
+      return { success: false, message: 'Firebase 연결이 필요합니다' };
+    }
+
+    try {
+      // 모든 사용자의 NFT에서 검색
+      const snapshot = await window.db.collectionGroup('nfts')
+        .where('exchangeCode', '==', expectedCode)
+        .get();
+
+      if (snapshot.empty) {
+        return { success: false, message: '해당 교환 코드를 찾을 수 없습니다' };
+      }
+
+      let targetNft = null;
+      let sellerId = null;
+
+      snapshot.forEach(doc => {
+        targetNft = { id: doc.id, ...doc.data() };
+        sellerId = doc.ref.parent.parent.id;
+      });
+
+      if (targetNft.ownerId === window.uid) {
+        return { success: false, message: '자신의 NFT는 받을 수 없습니다' };
+      }
+
+      // NFT 이전
+      const nftRef = window.db.collection('users').doc(sellerId)
+        .collection('nfts').doc(nftId);
+
+      await nftRef.update({
+        ownerId: window.uid,
+        exchangeCode: null,
+        previousOwners: window.firebase.firestore.FieldValue.arrayUnion(sellerId)
+      });
+
+      // 로컬 데이터 업데이트
+      this.myNFTs.push(targetNft);
+
+      return { success: true, nft: targetNft, message: 'NFT를 받았습니다!' };
+    } catch (err) {
+      console.error('[NFT] 교환 실패:', err);
+      return { success: false, message: '교환 실패: ' + err.message };
+    }
+  }
+
+  // NFT → 베팅 금액 전환
+  async convertToBettingAmount(nftId, amount) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false, message: 'NFT를 찾을 수 없습니다' };
+
+    const maxAmount = Math.floor(nft.rarity.priceRange[1] * 0.9); // 90%
+    if (amount > maxAmount) {
+      return { success: false, message: `최대 ${maxAmount.toLocaleString()}원까지 전환 가능합니다` };
+    }
+
+    const fee = Math.floor(amount * 0.1); // 10% 수수료
+    const actualAmount = amount - fee;
+
+    // 베팅 금액 추가
+    window.wallet += actualAmount;
+    document.getElementById('wallet').textContent = window.fmt(window.wallet);
+
+    // NFT 소멸
+    if (window.db && window.uid) {
+      try {
+        const userRef = window.db.collection('users').doc(window.uid)
+          .collection('nfts').doc(nftId);
+        await userRef.delete();
+      } catch (err) {
+        console.error('[NFT] 삭제 실패:', err);
+      }
+    }
+
+    // 로컬에서 제거
+    this.myNFTs = this.myNFTs.filter(n => n.id !== nftId);
+
+    // Firebase 동기화
+    if (window.FirebaseSync) {
+      window.FirebaseSync.saveWallet(window.wallet);
+    }
+
+    return { 
+      success: true, 
+      converted: actualAmount, 
+      fee: fee,
+      message: `${actualAmount.toLocaleString()}원이 추가되었습니다 (수수료: ${fee.toLocaleString()}원)`
+    };
+  }
+
+  // 경주에 사용할 NFT 말 선택
+  selectNFTForRace(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft || nft.type !== 'HORSE') return null;
+
+    window.selectedNFTForRace = nft;
+    console.log('[NFT] 경주용 말 선택:', nft.name, nft.stats);
+    return nft;
+  }
+
+  // NFT 스탯 버프 계산 (경주 시 사용)
+  getNFTBuff() {
+    if (!window.selectedNFTForRace) return { speed: 0, stamina: 0, burst: 0 };
+
+    const nft = window.selectedNFTForRace;
+    // 등급별 버프 비율
+    const buffRatio = {
+      'COMMON': 0.05,  // 5%
+      'RARE': 0.08,    // 8%
+      'EPIC': 0.12,    // 12%
+      'LEGENDARY': 0.20 // 20%
+    };
+
+    const ratio = buffRatio[nft.rarity.key] || 0.05;
+    return {
+      speed: Math.floor(nft.stats.speed * ratio),
+      stamina: Math.floor(nft.stats.stamina * ratio),
+      burst: Math.floor(nft.stats.burst * ratio)
+    };
+  }
+}
+
+// 전역 인스턴스
+let nftSystem = null;
+
+// NFT 시스템 초기화
+async function initNFTSystem() {
+  nftSystem = new NFTSystem();
+  console.log('[NFT System v1.0] 초기화 완료');
+  
+  // Firebase Firestore가 준비될 때까지 대기
+  let retries = 0;
+  while (!window.db && retries < 20) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    retries++;
+    console.log('[NFT] Firebase 대기 중...', retries);
+  }
+  
+  if (!window.db) {
+    console.log('[NFT] Firebase 연결 없음 - 로컬 모드로 작동');
+  } else {
+    console.log('[NFT] Firebase 연결됨');
+    // NFT 로드
+    await nftSystem.loadNFTsFromFirestore();
+    // 마켓플레이스 로드
+    await nftSystem.loadMarketplaceNFTs();
+  }
+  
+  return nftSystem;
+}
+
+// NFT 구매 모달 표시
+function showNFTCreateModal() {
+  const choice = confirm('NFT 말을 구매하시겠습니까?\n\n가격: 10,000원 ~ 1,000,000원\n랜덤 등급으로 발행됩니다.');
+  
+  if (!choice) return;
+
+  const price = prompt('구매할 가격을 선택하세요:\n1. 일반 (10,000원)\n2. 레어 (50,000원)\n3. 에픽 (200,000원)\n4. 전설 (1,000,000원)\n5. 랜덤\n\n번호를 입력하세요:', '5');
+  
+  if (!price) return;
+
+  let rarity = null;
+  if (price === '1') rarity = { key: 'COMMON', ...NFT_RARITIES.COMMON, purchasePrice: 10000 };
+  else if (price === '2') rarity = { key: 'RARE', ...NFT_RARITIES.RARE, purchasePrice: 50000 };
+  else if (price === '3') rarity = { key: 'EPIC', ...NFT_RARITIES.EPIC, purchasePrice: 200000 };
+  else if (price === '4') rarity = { key: 'LEGENDARY', ...NFT_RARITIES.LEGENDARY, purchasePrice: 1000000 };
+
+  const purchasePrice = rarity ? rarity.purchasePrice : NFT_RARITIES.COMMON.purchasePrice;
+  
+  if (window.wallet < purchasePrice) {
+    alert('잔액이 부족합니다!');
+    return;
+  }
+
+  // 지갑 차감
+  window.wallet -= purchasePrice;
+  document.getElementById('wallet').textContent = window.fmt(window.wallet);
+
+  // NFT 생성
+  if (nftSystem) {
+    nftSystem.createNFT('HORSE', rarity).then(nft => {
+      nft.purchasePrice = purchasePrice;
+      nftSystem.saveNFTToFirestore(nft).then(savedNft => {
+        alert(`${nft.name} (${nft.rarity.name}) 구매 완료!`);
+        renderNFTInventory();
+        
+        // Firebase 동기화
+        if (window.FirebaseSync) {
+          window.FirebaseSync.saveWallet(window.wallet);
+        }
+      });
+    });
+  }
+}
+
+// 전환 목록 렌더링
+function renderNFTConvertList() {
+  const container = document.getElementById('nftConvertList');
+  if (!container || !nftSystem) return;
+
+  const nfts = nftSystem.myNFTs.filter(n => n.type === 'HORSE');
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">전환할 NFT가 없습니다</div>';
+    return;
+  }
+
+  container.innerHTML = nfts.map(nft => {
+    const maxAmount = Math.floor(nft.rarity.priceRange[1] * 0.9);
+    return `
+      <div class="row" style="background:#1a1a2e;padding:10px;margin:5px 0;border-radius:6px;align-items:center;">
+        <img src="${nft.imageUrl}" style="width:50px;height:50px;border-radius:4px;">
+        <div style="flex:1;margin-left:10px;">
+          <div><strong>${nft.name}</strong> [${nft.rarity.name}]</div>
+          <div style="font-size:11px;color:#888;">최대 전환: ${maxAmount.toLocaleString()}원</div>
+        </div>
+        <button onclick="showNFTConvertModal('${nft.id}')" style="background:#e74c3c;">전환</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// 교환 코드 사용
+function redeemExchangeCode() {
+  const code = document.getElementById('exchangeCodeInput').value.trim();
+  if (!code) {
+    alert('교환 코드를 입력하세요');
+    return;
+  }
+
+  if (nftSystem) {
+    nftSystem.receiveViaExchangeCode(code).then(result => {
+      alert(result.message);
+      if (result.success) {
+        renderNFTInventory();
+        document.getElementById('exchangeCodeInput').value = '';
+      }
+    });
+  }
+}
+
+// 베팅 시 NFT 말 선택
+function showNFTSelectForBetting() {
+  if (!nftSystem || nftSystem.myNFTs.filter(n => n.type === 'HORSE').length === 0) {
+    alert('보유한 NFT 말이 없습니다.\nNFT 탭에서 구매하세요!');
+    return;
+  }
+
+  let html = '<div style="max-height:300px;overflow-y:auto;">';
+  nftSystem.myNFTs.filter(n => n.type === 'HORSE').forEach(nft => {
+    const isSelected = window.selectedNFTForRace && window.selectedNFTForRace.id === nft.id;
+    html += `
+      <div style="background:${isSelected ? '#2ecc71' : '#1a1a2e'};padding:10px;margin:5px 0;border-radius:6px;cursor:pointer;" onclick="selectNFTForRace('${nft.id}')">
+        <div style="display:flex;align-items:center;">
+          <img src="${nft.imageUrl}" style="width:40px;height:40px;border-radius:4px;">
+          <div style="flex:1;margin-left:10px;">
+            <div><strong>${nft.name}</strong> [${nft.rarity.name}]</div>
+            <div style="font-size:10px;color:#888;">속:${nft.stats.speed} 지구:${nft.stats.stamina} 스퍼트:${nft.stats.burst}</div>
+          </div>
+          ${isSelected ? '<span style="color:#fff;">✓ 선택됨</span>' : ''}
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  html += '<div style="margin-top:10px;"><button onclick="clearSelectedNFT()" style="background:#e74c3c;">선택 해제</button></div>';
+
+  const modal = document.createElement('div');
+  modal.id = 'nftSelectModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,20,.9);display:flex;align-items:center;justify-content:center;z-index:99999;';
+  modal.innerHTML = `
+    <div style="background:#0f1424;border:1px solid #333;border-radius:12px;padding:20px;max-width:400px;width:90%;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+        <h3 style="margin:0;">🐴 경주용 NFT 말 선택</h3>
+        <button onclick="document.getElementById('nftSelectModal').remove()" style="background:transparent;border:1px solid #666;">✕</button>
+      </div>
+      ${html}
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function clearSelectedNFT() {
+  window.selectedNFTForRace = null;
+  alert('NFT 말 선택이 해제되었습니다');
+  const modal = document.getElementById('nftSelectModal');
+  if (modal) modal.remove();
+}
+
+// UI 렌더링
+function renderNFTInventory() {
+  if (!nftSystem) return;
+
+  const container = document.getElementById('nftInventory');
+  if (!container) return;
+
+  const nfts = nftSystem.myNFTs;
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">보유한 NFT가 없습니다</div>';
+    return;
+  }
+
+  container.innerHTML = nfts.map(nft => `
+    <div class="nft-card" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px;margin:5px;">
+      <img src="${nft.imageUrl}" style="width:100%;border-radius:4px;">
+      <div style="font-size:12px;margin-top:5px;">
+        <strong>${nft.name}</strong>
+        <span style="color:${nft.rarity.key === 'LEGENDARY' ? '#FFD700' : nft.rarity.key === 'EPIC' ? '#9B59B6' : nft.rarity.key === 'RARE' ? '#3498DB' : '#95A5A6'}">
+          [${nft.rarity.name}]
+        </span>
+      </div>
+      ${nft.type === 'HORSE' && nft.stats ? `
+        <div style="font-size:10px;color:#888;margin-top:3px;">
+          속:${nft.stats.speed} 지구:${nft.stats.stamina} 스퍼트:${nft.stats.burst}
+        </div>
+      ` : ''}
+      <div style="display:flex;gap:5px;margin-top:8px;">
+        ${nft.type === 'HORSE' ? `<button onclick="selectNFTForRace('${nft.id}')" style="flex:1;background:#27ae60;">사용</button>` : ''}
+        <button onclick="showNFTSellModal('${nft.id}')" style="flex:1;background:#e67e22;">판매</button>
+        <button onclick="generateExchangeCode('${nft.id}')" style="flex:1;background:#9b59b6;">교환</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderNFTMarketplace() {
+  if (!nftSystem) return;
+
+  const container = document.getElementById('nftMarketplace');
+  if (!container) return;
+
+  const nfts = nftSystem.marketplaceNFTs;
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">마켓플레이스에 등록된 NFT가 없습니다</div>';
+    return;
+  }
+
+  container.innerHTML = nfts.map(nft => `
+    <div class="nft-card" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px;margin:5px;">
+      <img src="${nft.imageUrl}" style="width:100%;border-radius:4px;">
+      <div style="font-size:12px;margin-top:5px;">
+        <strong>${nft.name}</strong>
+        <span style="color:${nft.rarity.key === 'LEGENDARY' ? '#FFD700' : nft.rarity.key === 'EPIC' ? '#9B59B6' : nft.rarity.key === 'RARE' ? '#3498DB' : '#95A5A6'}">
+          [${nft.rarity.name}]
+        </span>
+      </div>
+      <div style="font-size:14px;color:#ffd700;margin-top:5px;">
+        ${nft.listedPrice.toLocaleString()}원
+      </div>
+      <button onclick="buyFromMarketplace('${nft.id}')" style="width:100%;margin-top:8px;background:#e74c3c;">
+        구매하기
+      </button>
+    </div>
+  `).join('');
+}
+
+// 전역 함수들
+function selectNFTForRace(nftId) {
+  const nft = nftSystem.selectNFTForRace(nftId);
+  if (nft) {
+    alert(`${nft.name} 말 선택 완료!\n경주 시 스탯이 버프됩니다.`);
+  }
+}
+
+function generateExchangeCode(nftId) {
+  const result = nftSystem.setExchangeCode(nftId);
+  if (result.success) {
+    alert(`교환 코드: ${result.code}\n이 코드를 다른 사용자에게 전달하세요.\n(클립보드에 복사됨)`);
+  }
+}
+
+function showNFTSellModal(nftId) {
+  const nft = nftSystem.myNFTs.find(n => n.id === nftId);
+  if (!nft) return;
+
+  const price = prompt(`판매 가격을 입력하세요 (${nft.rarity.priceRange[0].toLocaleString()} - ${nft.rarity.priceRange[1].toLocaleString()}원):`, nft.rarity.priceRange[0]);
+  
+  if (price) {
+    const result = nftSystem.listNFT(nftId, parseInt(price));
+    alert(result.message);
+    renderNFTInventory();
+  }
+}
+
+function buyFromMarketplace(nftId) {
+  const result = nftSystem.buyFromMarketplace(nftId);
+  alert(result.message);
+  if (result.success) {
+    renderNFTMarketplace();
+    renderNFTInventory();
+  }
+}
+
+function showNFTConvertModal(nftId) {
+  const nft = nftSystem.myNFTs.find(n => n.id === nftId);
+  if (!nft) return;
+
+  const maxAmount = Math.floor(nft.rarity.priceRange[1] * 0.9);
+  const price = prompt(`전환할 금액을 입력하세요 (최대 ${maxAmount.toLocaleString()}원, 10% 수수료 적용):`, Math.floor(maxAmount * 0.5));
+  
+  if (price) {
+    const result = nftSystem.convertToBettingAmount(nftId, parseInt(price));
+    alert(result.message);
+    if (result.success) {
+      renderNFTInventory();
+    }
+  }
+}
+
+// 전역 노출
+window.NFTSystem = NFTSystem;
+window.initNFTSystem = initNFTSystem;
+window.nftSystem = nftSystem;
+window.renderNFTInventory = renderNFTInventory;
+window.renderNFTMarketplace = renderNFTMarketplace;
+window.renderNFTConvertList = renderNFTConvertList;
+window.selectNFTForRace = selectNFTForRace;
+window.generateExchangeCode = generateExchangeCode;
+window.showNFTSellModal = showNFTSellModal;
+window.showNFTCreateModal = showNFTCreateModal;
+window.buyFromMarketplace = buyFromMarketplace;
+window.showNFTConvertModal = showNFTConvertModal;
+window.redeemExchangeCode = redeemExchangeCode;
+window.showNFTSelectForBetting = showNFTSelectForBetting;
+window.clearSelectedNFT = clearSelectedNFT;
+
+console.log('[NFT System v1.0] 모듈 로드 완료');

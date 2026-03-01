@@ -1,0 +1,850 @@
+/**
+ * NFT Horse System v2.0
+ * 도트경마 v5.2 - 새로운 NFT 말 시스템
+ * 랜덤 박스 4종, 100만가지 이름, 무료 브론즈 박스
+ */
+
+const NFT_BOXES = {
+  BRONZE: {
+    name: '브론즈',
+    price: 10000,
+    probabilities: { COMMON: 0.90, RARE: 0.10, EPIC: 0, LEGENDARY: 0 },
+    color: '#cd7f32',
+    freePerDay: 1
+  },
+  SILVER: {
+    name: '실버',
+    price: 50000,
+    probabilities: { COMMON: 0.70, RARE: 0.25, EPIC: 0.05, LEGENDARY: 0 },
+    color: '#c0c0c0',
+    freePerDay: 0
+  },
+  GOLD: {
+    name: '골드',
+    price: 200000,
+    probabilities: { COMMON: 0.50, RARE: 0.35, EPIC: 0.14, LEGENDARY: 0.01 },
+    color: '#ffd700',
+    freePerDay: 0
+  },
+  DIAMOND: {
+    name: '다이아몬드',
+    price: 1000000,
+    probabilities: { COMMON: 0, RARE: 0.40, EPIC: 0.50, LEGENDARY: 0.10 },
+    color: '#b9f2ff',
+    freePerDay: 0
+  }
+};
+
+const NFT_RARITIES = {
+  COMMON: { name: '일반', color: '#95A5A6', buffRatio: 0.05, minStat: 40, maxStat: 60 },
+  RARE: { name: '레어', color: '#3498DB', buffRatio: 0.08, minStat: 60, maxStat: 75 },
+  EPIC: { name: '에픽', color: '#9B59B6', buffRatio: 0.12, minStat: 75, maxStat: 85 },
+  LEGENDARY: { name: '전설', color: '#FFD700', buffRatio: 0.20, minStat: 85, maxStat: 100 }
+};
+
+const NFT_PREFIXES = ['신속', '빠른', '강력', '용감', '희망', '승리', '천둥', '폭풍', '불꽃', '백색', '흑색', '적색', '청색', '황금', '은빛', '보석', '미친', '완벽', '传奇', '무적'];
+const NFT_SUFFIXES = ['질주', '질풍', '疾風', '電光', 'ieger', '_runner', '경마', '마왕', '대박', '복권', '억소리', '대박러시', '슈퍼', '울트라', '메가', '기가', '테라', '�타', '엑사', '존'];
+
+class NFTSystem {
+  constructor() {
+    this.myNFTs = [];
+    this.marketplaceNFTs = [];
+    this.lastFreeBoxDate = null;
+    this.freeBoxUsed = false;
+    this.loadFromLocalStorage();
+  }
+
+  checkFirebaseReady() {
+    return window.db && window.uid;
+  }
+
+  saveToLocalStorage() {
+    try {
+      localStorage.setItem('myNFTs', JSON.stringify(this.myNFTs));
+      localStorage.setItem('nftFreeBox', JSON.stringify({
+        date: this.lastFreeBoxDate,
+        used: this.freeBoxUsed
+      }));
+    } catch (err) {
+      console.error('[NFT] localStorage 저장 실패:', err);
+    }
+  }
+
+  loadFromLocalStorage() {
+    try {
+      const stored = localStorage.getItem('myNFTs');
+      if (stored) this.myNFTs = JSON.parse(stored);
+      
+      const freeData = JSON.parse(localStorage.getItem('nftFreeBox') || '{}');
+      this.lastFreeBoxDate = freeData.date;
+      this.freeBoxUsed = freeData.used;
+      
+      this.checkFreeBoxReset();
+    } catch (err) {
+      this.myNFTs = [];
+    }
+  }
+
+  checkFreeBoxReset() {
+    const today = new Date().toDateString();
+    if (this.lastFreeBoxDate !== today) {
+      this.freeBoxUsed = false;
+      this.lastFreeBoxDate = today;
+      this.saveToLocalStorage();
+    }
+  }
+
+  canUseFreeBox() {
+    this.checkFreeBoxReset();
+    return !this.freeBoxUsed;
+  }
+
+  useFreeBox() {
+    if (!this.canUseFreeBox()) return false;
+    this.freeBoxUsed = true;
+    this.saveToLocalStorage();
+    return true;
+  }
+
+  getFreeBoxRemainingTime() {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const diff = tomorrow - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}시간 ${minutes}분`;
+  }
+
+  generate100万Name(id) {
+    const hash = this.simpleHash(id);
+    const prefixIndex = hash % NFT_PREFIXES.length;
+    const suffixIndex = Math.floor(hash / NFT_PREFIXES.length) % NFT_SUFFIXES.length;
+    const num = (hash % 10000).toString().padStart(4, '0');
+    return NFT_PREFIXES[prefixIndex] + NFT_SUFFIXES[suffixIndex] + '#' + num;
+  }
+
+  simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  }
+
+  generateUniqueColor(nftId) {
+    const hash = this.simpleHash(nftId);
+    const hue = hash % 360;
+    const saturation = 50 + (hash % 40);
+    const lightness = 40 + (hash % 30);
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  }
+
+  getRandomRarity(boxType) {
+    const box = NFT_BOXES[boxType];
+    const rand = Math.random();
+    let cumulative = 0;
+    
+    for (const [key, prob] of Object.entries(box.probabilities)) {
+      cumulative += prob;
+      if (rand < cumulative) {
+        return { key, ...NFT_RARITIES[key] };
+      }
+    }
+    return { key: 'COMMON', ...NFT_RARITIES.COMMON };
+  }
+
+  getRandomStats(rarity) {
+    return {
+      speed: Math.floor(Math.random() * (rarity.maxStat - rarity.minStat + 1)) + rarity.minStat,
+      stamina: Math.floor(Math.random() * (rarity.maxStat - rarity.minStat + 1)) + rarity.minStat,
+      burst: Math.floor(Math.random() * (rarity.maxStat - rarity.minStat + 1)) + rarity.minStat
+    };
+  }
+
+  async createNFT(boxType = 'BRONZE', isFree = false) {
+    const box = NFT_BOXES[boxType];
+    if (!isFree && (!window.wallet || window.wallet < box.price)) {
+      throw new Error('잔액 부족');
+    }
+
+    const rarity = this.getRandomRarity(boxType);
+    const nftId = 'nft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const nft = {
+      id: nftId,
+      type: 'HORSE',
+      name: this.generate100万Name(nftId),
+      rarity: rarity,
+      color: this.generateUniqueColor(nftId),
+      stats: this.getRandomStats(rarity),
+      createdAt: Date.now(),
+      ownerId: window.uid || 'anonymous',
+      boxType: boxType,
+      isFree: isFree,
+      isListed: false,
+      listedPrice: 0,
+      exchangeCode: null
+    };
+
+    nft.imageUrl = await this.generateNFTImage(nft);
+
+    if (!isFree) {
+      window.wallet -= box.price;
+      this.updateWalletDisplay();
+    }
+
+    this.myNFTs.push(nft);
+    this.saveToLocalStorage();
+
+    if (this.checkFirebaseReady()) {
+      try {
+        await window.db.collection('users').doc(window.uid).collection('nfts').doc(nftId).set(nft);
+      } catch (err) {
+        console.log('[NFT] Firebase 저장 실패, localStorage만 사용');
+      }
+    }
+
+    return nft;
+  }
+
+  async generateNFTImage(nft) {
+    return new Promise(resolve => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+
+      const gradient = ctx.createLinearGradient(0, 0, 200, 200);
+      gradient.addColorStop(0, nft.color);
+      gradient.addColorStop(1, this.darkenColor(nft.color, 30));
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 200, 200);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.beginPath();
+      ctx.arc(100, 80, 60, 0, Math.PI * 2);
+      ctx.fill();
+
+      this.drawSVGHorse(ctx, 100, 120, nft.color, 1.2);
+
+      const rarityColors = {
+        LEGENDARY: '#FFD700',
+        EPIC: '#9B59B6',
+        RARE: '#3498DB',
+        COMMON: '#95A5A6'
+      };
+      const rColor = rarityColors[nft.rarity.key] || '#95A5A6';
+
+      ctx.fillStyle = rColor;
+      ctx.fillRect(0, 0, 200, 8);
+      ctx.fillRect(0, 192, 200, 8);
+
+      ctx.font = 'bold 14px Arial';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.fillText(nft.name, 100, 175);
+
+      ctx.font = 'bold 12px Arial';
+      const rarityText = nft.rarity.key === 'LEGENDARY' ? '★전설★' :
+                         nft.rarity.key === 'EPIC' ? '♦에픽♦' :
+                         nft.rarity.key === 'RARE' ? '★레어★' : '일반';
+      ctx.fillText(rarityText, 100, 192);
+
+      resolve(canvas.toDataURL('image/png'));
+    });
+  }
+
+  drawSVGHorse(ctx, x, y, color, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 25, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(-20, -5, 12, 8, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(20, -10);
+    ctx.quadraticCurveTo(35, -15, 40, -5);
+    ctx.quadraticCurveTo(35, 0, 25, 5);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFE4B5';
+    ctx.beginPath();
+    ctx.arc(-24, -8, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(-25, -9, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFE4B5';
+    ctx.fillRect(-5, 8, 4, 15);
+    ctx.fillRect(5, 8, 4, 15);
+    ctx.fillRect(-15, 8, 4, 12);
+    ctx.fillRect(10, 8, 4, 12);
+
+    ctx.restore();
+  }
+
+  darkenColor(hslColor, percent) {
+    const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (!match) return hslColor;
+    const h = parseInt(match[1]);
+    const s = parseInt(match[2]);
+    const l = Math.max(0, parseInt(match[3]) - percent);
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  }
+
+  updateWalletDisplay() {
+    const walletEl = document.getElementById('wallet');
+    if (walletEl && window.fmt) {
+      walletEl.textContent = window.fmt(window.wallet || 0);
+    }
+  }
+
+  getNFTBuff(nft) {
+    if (!nft || nft.type !== 'HORSE') return { speed: 0, stamina: 0, burst: 0 };
+    const ratio = nft.rarity.buffRatio;
+    return {
+      speed: Math.floor(nft.stats.speed * ratio),
+      stamina: Math.floor(nft.stats.stamina * ratio),
+      burst: Math.floor(nft.stats.burst * ratio)
+    };
+  }
+
+  selectNFTForRace(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft || nft.type !== 'HORSE') return null;
+    window.selectedNFTForRace = nft;
+    return nft;
+  }
+
+  generateExchangeCode(nftId) {
+    return 'EX-' + nftId.slice(4, 12).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+  }
+
+  async setExchangeCode(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false };
+    
+    const code = this.generateExchangeCode(nftId);
+    nft.exchangeCode = code;
+    this.saveToLocalStorage();
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    }
+    
+    return { success: true, code };
+  }
+
+  async redeemExchangeCode(code) {
+    const normalizedCode = code.trim().toUpperCase();
+    const nft = this.myNFTs.find(n => n.exchangeCode === normalizedCode);
+    
+    if (nft) {
+      return { success: false, message: '이미 등록된 코드입니다' };
+    }
+
+    if (this.checkFirebaseReady()) {
+      try {
+        const snapshot = await window.db.collectionGroup('nfts')
+          .where('exchangeCode', '==', normalizedCode).get();
+        
+        if (!snapshot.empty) {
+          const sourceNft = snapshot.docs[0].data();
+          const newNft = { ...sourceNft };
+          newNft.id = 'nft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          newNft.exchangeCode = null;
+          newNft.ownerId = window.uid;
+          newNft.createdAt = Date.now();
+          
+          this.myNFTs.push(newNft);
+          this.saveToLocalStorage();
+          
+          return { success: true, nft: newNft };
+        }
+      } catch (err) {
+        console.log('[NFT] 코드 교환 오류:', err);
+      }
+    }
+    
+    return { success: false, message: '유효하지 않은 코드입니다' };
+  }
+
+  convertToMoney(nftId) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false };
+    
+    const [minPrice, maxPrice] = nft.rarity.key === 'LEGENDARY' ? [800000, 2000000] :
+                                  nft.rarity.key === 'EPIC' ? [150000, 400000] :
+                                  nft.rarity.key === 'RARE' ? [40000, 100000] : [8000, 20000];
+    
+    const amount = Math.floor((minPrice + maxPrice) / 2 * 0.9);
+    const fee = Math.floor(amount * 0.1);
+    const actual = amount - fee;
+    
+    window.wallet = (window.wallet || 0) + actual;
+    this.myNFTs = this.myNFTs.filter(n => n.id !== nftId);
+    this.saveToLocalStorage();
+    this.updateWalletDisplay();
+    
+    return { success: true, amount: actual, fee };
+  }
+
+  listNFT(nftId, price) {
+    const nft = this.myNFTs.find(n => n.id === nftId);
+    if (!nft) return { success: false };
+    
+    nft.isListed = true;
+    nft.listedPrice = price;
+    this.saveToLocalStorage();
+    
+    return { success: true };
+  }
+
+  buyFromMarketplace(nftId, price) {
+    if (!window.wallet || window.wallet < price) {
+      return { success: false, message: '잔액 부족' };
+    }
+    
+    window.wallet -= price;
+    this.updateWalletDisplay();
+    
+    return { success: true };
+  }
+}
+
+let nftSystem = null;
+
+async function initNFTSystem() {
+  if (nftSystem) return nftSystem;
+  
+  nftSystem = new NFTSystem();
+  console.log('[NFT System v2.0] 초기화 완료');
+  
+  nftSystem.loadFromLocalStorage();
+  
+  let retries = 0;
+  while (!window.db && retries < 20) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    retries++;
+  }
+  
+  if (window.db && window.uid) {
+    try {
+      await loadNFTsFromFirestore();
+    } catch (err) {
+      console.log('[NFT] Firebase 로드 실패');
+    }
+  }
+  
+  return nftSystem;
+}
+
+async function loadNFTsFromFirestore() {
+  if (!nftSystem || !window.db || !window.uid) return;
+  
+  try {
+    const snapshot = await window.db.collection('users').doc(window.uid).collection('nfts').get();
+    nftSystem.myNFTs = [];
+    snapshot.forEach(doc => {
+      nftSystem.myNFTs.push({ id: doc.id, ...doc.data() });
+    });
+    nftSystem.saveToLocalStorage();
+  } catch (err) {
+    console.log('[NFT] Firestore 로드 오류:', err);
+  }
+}
+
+function renderNFTTab() {
+  const container = document.getElementById('nftTabContent');
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div style="padding: 15px;">
+      <h3 style="margin: 0 0 15px 0; color: #ffd700;">🎁 랜덤 박스</h3>
+      
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
+        ${renderBoxCard('BRONZE')}
+        ${renderBoxCard('SILVER')}
+        ${renderBoxCard('GOLD')}
+        ${renderBoxCard('DIAMOND')}
+      </div>
+      
+      <div id="freeBoxStatus" style="background: #1a1a2e; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+        ${renderFreeBoxStatus()}
+      </div>
+      
+      <h3 style="margin: 20px 0 15px 0; color: #4ECDC4;">📦 내 보관함 (${nftSystem?.myNFTs?.length || 0}개)</h3>
+      <div id="nftInventory"></div>
+      
+      <h3 style="margin: 20px 0 15px 0; color: #9B59B6;">🔄 원화 전환</h3>
+      <div id="nftConvertList"></div>
+      
+      <h3 style="margin: 20px 0 15px 0; color: #e74c3c;">🔀 NFT 교환</h3>
+      <div style="background: #1a1a2e; padding: 15px; border-radius: 8px;">
+        <input type="text" id="exchangeCodeInput" placeholder="교환 코드 입력" style="width: 70%; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #0d1330; color: #fff;">
+        <button onclick="redeemExchangeCode()" style="width: 25%; padding: 10px; border-radius: 6px; background: #e74c3c; color: #fff; border: none;">교환</button>
+      </div>
+    </div>
+  `;
+  
+  renderNFTInventory();
+  renderNFTConvertList();
+}
+
+function renderBoxCard(boxType) {
+  const box = NFT_BOXES[boxType];
+  return `
+    <div style="background: linear-gradient(135deg, ${box.color}22, ${box.color}44); border: 2px solid ${box.color}; border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; transition: transform 0.2s;" onclick="openBox('${boxType}')">
+      <div style="font-size: 24px; margin-bottom: 5px;">${getBoxEmoji(boxType)}</div>
+      <div style="font-weight: bold; color: ${box.color};">${box.name} 박스</div>
+      <div style="font-size: 14px; color: #888; margin-top: 5px;">${box.price.toLocaleString()}원</div>
+      <div style="font-size: 11px; color: #666; margin-top: 3px;">${getBoxProbText(boxType)}</div>
+    </div>
+  `;
+}
+
+function getBoxEmoji(boxType) {
+  const emojis = { BRONZE: '🥉', SILVER: '🥈', GOLD: '🥇', DIAMOND: '💎' };
+  return emojis[boxType] || '📦';
+}
+
+function getBoxProbText(boxType) {
+  const texts = {
+    BRONZE: '일반 90%, 레어 10%',
+    SILVER: '일반 70%, 레어 25%, 에픽 5%',
+    GOLD: '일반 50%, 레어 35%, 에픽 14%, 전설 1%',
+    DIAMOND: '레어 40%, 에픽 50%, 전설 10%'
+  };
+  return texts[boxType] || '';
+}
+
+function renderFreeBoxStatus() {
+  if (!nftSystem) return '로딩 중...';
+  
+  if (nftSystem.canUseFreeBox()) {
+    return `<span style="color: #9df7c7;">✅ 무료 브론즈 박스 사용 가능!</span>
+            <button onclick="openBox('BRONZE', true)" style="margin-left: 10px; padding: 8px 16px; background: #27ae60; color: #fff; border: none; border-radius: 6px; cursor: pointer;">무료 오픈</button>`;
+  } else {
+    return `<span style="color: #ff7a9e;">❌ 오늘의 무료 브론즈 박스 사용 완료</span>
+            <div style="font-size: 12px; color: #888; margin-top: 5px;">다음 무료 오픈까지: ${nftSystem.getFreeBoxRemainingTime()}</div>`;
+  }
+}
+
+async function openBox(boxType, isFree = false) {
+  if (!nftSystem) {
+    await initNFTSystem();
+  }
+  
+  const box = NFT_BOXES[boxType];
+  
+  if (isFree) {
+    if (boxType !== 'BRONZE') {
+      alert('무료 박스는 브론즈만 가능합니다');
+      return;
+    }
+    if (!nftSystem.canUseFreeBox()) {
+      alert('오늘의 무료 브론즈 박스를 이미 사용했습니다\n다음 오픈까지: ' + nftSystem.getFreeBoxRemainingTime());
+      return;
+    }
+  } else {
+    if (!window.wallet || window.wallet < box.price) {
+      alert('잔액이 부족합니다!\n필요: ' + box.price.toLocaleString() + '원\n보유: ' + (window.wallet || 0).toLocaleString() + '원');
+      return;
+    }
+  }
+  
+  showBoxOpeningAnimation(boxType, async () => {
+    try {
+      const nft = await nftSystem.createNFT(boxType, isFree);
+      
+      if (isFree) {
+        nftSystem.useFreeBox();
+      }
+      
+      showNFTOpenResult(nft);
+      renderNFTTab();
+    } catch (err) {
+      alert('박스 오픈 실패: ' + err.message);
+    }
+  });
+}
+
+function showBoxOpeningAnimation(boxType, callback) {
+  const overlay = document.createElement('div');
+  overlay.id = 'boxOpeningOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,30,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;';
+  
+  const box = NFT_BOXES[boxType];
+  const emojis = ['🎁', '📦', '👜', '🎀', '✨', '🌟'];
+  
+  let count = 0;
+  const interval = setInterval(() => {
+    overlay.innerHTML = `
+      <div style="font-size: 80px; animation: shake 0.5s infinite;">${emojis[count % emojis.length]}</div>
+      <div style="color: ${box.color}; font-size: 24px; font-weight: bold; margin-top: 20px;">${box.name} 박스 오픈 중...</div>
+      <div style="color: #888; margin-top: 10px;">${'.'.repeat(count % 4)}</div>
+    `;
+    count++;
+  }, 200);
+  
+  overlay.innerHTML += `
+    <style>
+      @keyframes shake {
+        0%, 100% { transform: translateX(0) rotate(0); }
+        25% { transform: translateX(-10px) rotate(-5deg); }
+        75% { transform: translateX(10px) rotate(5deg); }
+      }
+    </style>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  setTimeout(() => {
+    clearInterval(interval);
+    overlay.remove();
+    callback();
+  }, 1500);
+}
+
+function showNFTOpenResult(nft) {
+  const modal = document.createElement('div');
+  modal.id = 'nftResultModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,30,.95);display:flex;align-items:center;justify-content:center;z-index:99999;';
+  
+  const rarityColors = {
+    LEGENDARY: 'linear-gradient(135deg, #FFD700, #FF6B00)',
+    EPIC: 'linear-gradient(135deg, #9B59B6, #E74C3C)',
+    RARE: 'linear-gradient(135deg, #3498DB, #2ECC71)',
+    COMMON: 'linear-gradient(135deg, #95A5A6, #7F8C8D)'
+  };
+  
+  const rarityText = {
+    LEGENDARY: '🎉 전설 !!!',
+    EPIC: '✨ 에픽 !!',
+    RARE: '⭐ 레어 !',
+    COMMON: '일반'
+  };
+  
+  modal.innerHTML = `
+    <div style="background: ${rarityColors[nft.rarity.key] || rarityColors.COMMON}; border-radius: 20px; padding: 30px; text-align: center; max-width: 350px; animation: popIn 0.5s;">
+      <style>
+        @keyframes popIn {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      </style>
+      <div style="font-size: 48px; margin-bottom: 10px;">🐴</div>
+      <div style="font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 10px;">${rarityText[nft.rarity.key]}</div>
+      <div style="font-size: 20px; color: #fff; margin-bottom: 5px;">${nft.name}</div>
+      <div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 15px;">${nft.color}</div>
+      <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+        <div style="color: #fff; font-size: 12px;">스탯 버프 +${Math.round(nft.rarity.buffRatio * 100)}%</div>
+        <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+          <div style="text-align: center;"><div style="color: #ff6b6b;">${nft.stats.speed}</div><div style="color: #888; font-size: 10px;">속도</div></div>
+          <div style="text-align: center;"><div style="color: #4ECDC4;">${nft.stats.stamina}</div><div style="color: #888; font-size: 10px;">지구력</div></div>
+          <div style="text-align: center;"><div style="color: #ffd26e;">${nft.stats.burst}</div><div style="color: #888; font-size: 10px;">스퍼트</div></div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('nftResultModal').remove()" style="padding: 12px 30px; background: #fff; color: #333; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">확인</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function renderNFTInventory() {
+  const container = document.getElementById('nftInventory');
+  if (!container || !nftSystem) return;
+  
+  const nfts = nftSystem.myNFTs || [];
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 30px; color: #888;">보유한 NFT가 없습니다<br>위 박스를 구매하세요!</div>';
+    return;
+  }
+  
+  container.innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
+      ${nfts.map(nft => renderNFTCard(nft)).join('')}
+    </div>
+  `;
+}
+
+function renderNFTCard(nft) {
+  const rarityColors = {
+    LEGENDARY: '#FFD700',
+    EPIC: '#9B59B6',
+    RARE: '#3498DB',
+    COMMON: '#95A5A6'
+  };
+  
+  const isSelected = window.selectedNFTForRace && window.selectedNFTForRace.id === nft.id;
+  
+  return `
+    <div style="background: #1a1a2e; border: 2px solid ${rarityColors[nft.rarity.key] || '#333'}; border-radius: 10px; padding: 10px; ${isSelected ? 'box-shadow: 0 0 15px ' + rarityColors[nft.rarity.key] : ''}">
+      <div style="background: ${nft.color}; border-radius: 8px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 40px;">
+        🐴
+      </div>
+      <div style="font-size: 12px; margin-top: 8px; color: ${rarityColors[nft.rarity.key]}; font-weight: bold;">${nft.rarity.name}</div>
+      <div style="font-size: 13px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nft.name}</div>
+      <div style="font-size: 10px; color: #888; margin-top: 3px;">${nft.stats.speed} / ${nft.stats.stamina} / ${nft.stats.burst}</div>
+      <div style="display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap;">
+        <button onclick="toggleNFTForRace('${nft.id}')" style="flex: 1; background: ${isSelected ? '#e74c3c' : '#27ae60'}; color: #fff; border: none; padding: 5px; border-radius: 4px; font-size: 10px; cursor: pointer;">${isSelected ? '사용중지' : '사용'}</button>
+        <button onclick="showConvertModal('${nft.id}')" style="flex: 1; background: #e74c3c; color: #fff; border: none; padding: 5px; border-radius: 4px; font-size: 10px; cursor: pointer;">환전</button>
+        <button onclick="showExchangeModal('${nft.id}')" style="flex: 1; background: #9b59b6; color: #fff; border: none; padding: 5px; border-radius: 4px; font-size: 10px; cursor: pointer;">교환</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderNFTConvertList() {
+  const container = document.getElementById('nftConvertList');
+  if (!container || !nftSystem) return;
+  
+  const nfts = nftSystem.myNFTs || [];
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">환전할 NFT가 없습니다</div>';
+    return;
+  }
+  
+  container.innerHTML = nfts.map(nft => {
+    const [minPrice, maxPrice] = nft.rarity.key === 'LEGENDARY' ? [800000, 2000000] :
+                                  nft.rarity.key === 'EPIC' ? [150000, 400000] :
+                                  nft.rarity.key === 'RARE' ? [40000, 100000] : [8000, 20000];
+    const avgPrice = Math.floor((minPrice + maxPrice) / 2 * 0.9);
+    
+    return `
+      <div style="background: #1a1a2e; padding: 10px; margin: 5px 0; border-radius: 8px; display: flex; align-items: center;">
+        <div style="background: ${nft.color}; width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🐴</div>
+        <div style="flex: 1; margin-left: 10px;">
+          <div style="color: #fff; font-size: 12px; font-weight: bold;">${nft.name}</div>
+          <div style="color: ${NFT_RARITIES[nft.rarity.key]?.color || '#888'}; font-size: 11px;">${nft.rarity.name}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="color: #9df7c7; font-size: 12px; font-weight: bold;">≈${avgPrice.toLocaleString()}원</div>
+          <button onclick="showConvertModal('${nft.id}')" style="background: #e74c3c; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer;">환전</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectNFTForRace(nftId) {
+  if (!nftSystem) return;
+  const nft = nftSystem.selectNFTForRace(nftId);
+  if (nft) {
+    alert(`${nft.name} 말을 경주에 사용합니다!\n버프: 속도 +${nft.stats.speed * nft.rarity.buffRatio}, 지구력 +${nft.stats.stamina * nft.rarity.buffRatio}, 스퍼트 +${nft.stats.burst * nft.rarity.buffRatio}`);
+    renderNFTInventory();
+  }
+}
+
+function toggleNFTForRace(nftId) {
+  if (!nftSystem) return;
+  
+  const nft = nftSystem.myNFTs.find(n => n.id === nftId);
+  if (!nft) return;
+  
+  const isSelected = window.selectedNFTForRace && window.selectedNFTForRace.id === nftId;
+  
+  if (isSelected) {
+    // 사용 중지
+    window.selectedNFTForRace = null;
+    console.log('[NFT] 말 사용 중지:', nft.name);
+  } else {
+    // 사용 시작
+    const result = nftSystem.selectNFTForRace(nftId);
+    if (result) {
+      console.log('[NFT] 말 사용 시작:', nft.name, '버프:', nftSystem.getNFTBuff(nft));
+    }
+  }
+  
+  // 보관함 다시 렌더링
+  renderNFTInventory();
+  
+  // 알림
+  const status = window.selectedNFTForRace ? '사용 중' : '사용 중지';
+  console.log('[NFT] 상태:', status);
+}
+
+function showConvertModal(nftId) {
+  const nft = nftSystem.myNFTs.find(n => n.id === nftId);
+  if (!nft) return;
+  
+  const [minPrice, maxPrice] = nft.rarity.key === 'LEGENDARY' ? [800000, 2000000] :
+                                nft.rarity.key === 'EPIC' ? [150000, 400000] :
+                                nft.rarity.key === 'RARE' ? [40000, 100000] : [8000, 20000];
+  const avgPrice = Math.floor((minPrice + maxPrice) / 2 * 0.9);
+  const fee = Math.floor(avgPrice * 0.1);
+  const actual = avgPrice - fee;
+  
+  if (!confirm(`${nft.name} (${nft.rarity.name})을(를) 원화로 환전하시겠습니까?\n\n예상 수령금: ${actual.toLocaleString()}원\n(수수료 10%: ${fee.toLocaleString()}원)`)) {
+    return;
+  }
+  
+  const result = nftSystem.convertToMoney(nftId);
+  if (result.success) {
+    alert(`${result.amount.toLocaleString()}원이 지갑에 추가되었습니다!`);
+    renderNFTTab();
+  }
+}
+
+function showExchangeModal(nftId) {
+  const nft = nftSystem.myNFTs.find(n => n.id === nftId);
+  if (!nft) return;
+  
+  nftSystem.setExchangeCode(nftId).then(result => {
+    if (result.success) {
+      alert(`교환 코드: ${result.code}\n이 코드를 다른 플레이어에게 공유하세요!\n코드가 클립보드에 복사되었습니다.`);
+    }
+  });
+}
+
+function redeemExchangeCode() {
+  const code = document.getElementById('exchangeCodeInput')?.value.trim();
+  if (!code) {
+    alert('교환 코드를 입력하세요');
+    return;
+  }
+  
+  if (!nftSystem) {
+    alert('NFT 시스템 로딩 중...');
+    return;
+  }
+  
+  nftSystem.redeemExchangeCode(code).then(result => {
+    if (result.success) {
+      alert(`NFT 교환 성공!\n받으신 말: ${result.nft.name} (${result.nft.rarity.name})`);
+      renderNFTTab();
+    } else {
+      alert(`교환 실패: ${result.message}`);
+    }
+  });
+}
+
+window.NFTSystem = NFTSystem;
+window.initNFTSystem = initNFTSystem;
+window.nftSystem = nftSystem;
+window.renderNFTTab = renderNFTTab;
+window.openBox = openBox;
+window.selectNFTForRace = selectNFTForRace;
+window.toggleNFTForRace = toggleNFTForRace;
+window.showConvertModal = showConvertModal;
+window.showExchangeModal = showExchangeModal;
+window.redeemExchangeCode = redeemExchangeCode;
+
+console.log('[NFT System v2.0] 모듈 로드 완료');
