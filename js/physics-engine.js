@@ -259,8 +259,11 @@
         const acceleration = (velocity - state.velocity) / deltaTime;
         state.acceleration = acceleration;
         
-        // 위치 업데이트
-        state.currentPos += velocity * deltaTime;
+        // 위치 업데이트 (SP_SPEED_SCALE 적용 — 거리별 실제 경기 시간 보정)
+        // SP_SPEED_SCALE은 sp_initRace()에서 거리에 따라 설정됨
+        //   1200m 이하 → 0.42 (약 48초), 1600m 이하 → 0.48 (약 49초), 이상 → 0.54 (약 52~62초)
+        const speedScale = window.SP_SPEED_SCALE || 1.0;
+        state.currentPos += velocity * deltaTime * speedScale;
         
         // 통계 기록
         if (velocity > state.stats.maxSpeedReached) {
