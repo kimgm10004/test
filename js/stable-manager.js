@@ -17,15 +17,16 @@
 (function () {
   'use strict';
 
-  const TRAINING_COOLDOWN_MS = 2 * 60 * 60 * 1000;
-  const TRAINING_STAT_GAIN   = { min: 1, max: 4 };
-  const TRAINING_FATIGUE     = 20;
-  const MEDICAL_COOLDOWN_MS  = 1 * 60 * 60 * 1000;
-  const MEDICAL_RECOVER      = 50;
-  const BREED_BASE_COST      = 200000;
-  const MARKET_REFRESH_COST  = 50000;
+  const TRAINING_COOLDOWN_MS = window.GAME_CONFIG?.TRAINING_COOLDOWN_MS ?? 2 * 60 * 60 * 1000; // [game-config.js]
+  const TRAINING_STAT_GAIN   = window.GAME_CONFIG?.TRAINING_STAT_GAIN   ?? { min: 1, max: 4 }; // [game-config.js]
+  const TRAINING_FATIGUE     = window.GAME_CONFIG?.TRAINING_FATIGUE     ?? 20; // [game-config.js]
+  const MEDICAL_COOLDOWN_MS  = window.GAME_CONFIG?.MEDICAL_COOLDOWN_MS  ?? 1 * 60 * 60 * 1000; // [game-config.js]
+  const MEDICAL_RECOVER      = window.GAME_CONFIG?.MEDICAL_RECOVER      ?? 50; // [game-config.js]
+  const BREED_BASE_COST      = window.GAME_CONFIG?.BREED_BASE_COST      ?? 200000; // [game-config.js]
+  const MARKET_REFRESH_COST  = window.GAME_CONFIG?.MARKET_REFRESH_COST  ?? 50000; // [game-config.js]
 
-  const HORSE_GRADES = {
+  // [game-config.js] HORSE_GRADES는 GAME_CONFIG.HORSE_GRADES 참조
+const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
     C:   { price: [50000,   100000],  stats: [30, 55],  weight: 40 },
     B:   { price: [100000,  200000],  stats: [55, 70],  weight: 30 },
     A:   { price: [200000,  400000],  stats: [70, 80],  weight: 15 },
@@ -364,8 +365,8 @@
   /* ---- Facilities ---- */
   function upgradeCost(type) {
     const level=StableState.facilities[type]||0;
-    const bases={barn:50000,training:70000,medical:60000,breeding:150000};
-    return Math.floor((bases[type]||50000)*Math.pow(1.8,level));
+    const bases = window.GAME_CONFIG?.STABLE_UPGRADE_BASE ?? {barn:50000,training:70000,medical:60000,breeding:150000}; // [game-config.js]
+    return Math.floor((bases[type]||50000)*Math.pow(window.GAME_CONFIG?.STABLE_UPGRADE_RATE ?? 1.8, level)); // [game-config.js]
   }
   function upgradeFacility(type) {
     const meta=FACILITY_META[type]; const level=StableState.facilities[type]||0;
@@ -595,7 +596,7 @@
   // [메모리 누수 수정] setInterval 중복 방지 — 최초 1회만 등록
   if (!window._stablePanelTimerStarted) {
     window._stablePanelTimerStarted = true;
-    setInterval(renderStatusPanel, 10000);
+    setInterval(renderStatusPanel, window.GAME_CONFIG?.STABLE_REFRESH_MS ?? 10000); // [game-config.js]
   }
 
   /* ---- Init ---- */
