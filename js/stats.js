@@ -114,9 +114,9 @@
    */
   async function migrateFromLegacy() {
     try {
-      const legacy = window.Storage.getItem('stats');
+      const legacy = localStorage.getItem('dot_racing_stats');
       if (legacy) {
-        const parsed = legacy;
+        const parsed = JSON.parse(legacy);
         console.log('[StatsSystem] Migrating from legacy storage...');
         
         if (window.DataManager) {
@@ -183,9 +183,9 @@
       if (success) return true;
     }
     
-    // Fallback to StorageManager
+    // Fallback
     try {
-      window.Storage.setItem('stats', stats);
+      localStorage.setItem('dot_racing_stats', JSON.stringify(stats));
       return true;
     } catch (e) {
       console.error('[StatsSystem] Save failed:', e);

@@ -407,7 +407,7 @@ let localTransactionCache = []; // 로컬 트랜잭션 캐시
 
 // Firebase 사용자 ID 가져오기
 function getFirebaseUserId() {
-  return window.uid || window.currentUserId || window.Storage.getItem('userId') || 'anonymous';
+  return window.uid || window.currentUserId || localStorage.getItem('userId') || 'anonymous';
 }
 
 // Firebase에서 트랜잭션 로드

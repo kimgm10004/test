@@ -545,7 +545,7 @@
 
   function restoreLastViewed() {
     try {
-      const last = window.Storage.getItem('last_replay');
+      const last = localStorage.getItem('dot_racing_last_replay');
       if (last) {
         const index = parseInt(last, 10);
         selectReplay(index);
@@ -553,10 +553,6 @@
     } catch (e) {
       console.warn('[ReplayViewer] Failed to restore last viewed:', e);
     }
-  }
-
-  function saveLastViewed(index) {
-    window.Storage.setItem('last_replay', index);
   }
 
   if (document.readyState === 'loading') {

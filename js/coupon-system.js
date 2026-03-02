@@ -48,10 +48,10 @@
      * 데이터 로드
      */
     loadData() {
-      const saved = window.Storage.getItem('coupons');
+      const saved = localStorage.getItem('dot_racing_coupons');
       if (saved) {
         try {
-          return saved;
+          return JSON.parse(saved);
         } catch (e) {
           console.warn('[Coupon] Failed to load data');
         }
@@ -79,7 +79,7 @@
      */
     saveData() {
       try {
-        window.Storage.setItem('coupons', this.data);
+        localStorage.setItem('dot_racing_coupons', JSON.stringify(this.data));
         
         // [v5.2] Firebase 동기화
         if (window.FirebaseSync) {

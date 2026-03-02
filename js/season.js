@@ -106,9 +106,9 @@
    */
   async function migrateFromLegacy() {
     try {
-      const legacy = window.Storage.getItem('season');
+      const legacy = localStorage.getItem('dot_racing_season');
       if (legacy) {
-        const parsed = legacy;
+        const parsed = JSON.parse(legacy);
         console.log('[SeasonSystem] Migrating from legacy storage...');
         
         // DataManager에 저장
@@ -197,18 +197,9 @@
       const success = await window.DataManager.save('season', seasonData);
       if (success) {
         console.log('[SeasonSystem] Saved via DataManager');
-      return true;
+        return true;
+      }
     }
-    
-    // Fallback to StorageManager
-    try {
-      window.Storage.setItem('season', seasonData);
-      return true;
-    } catch (e) {
-      console.error('[SeasonSystem] Save failed:', e);
-      return false;
-    }
-  }
     
     // Fallback to localStorage
     try {

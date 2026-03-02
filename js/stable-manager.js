@@ -88,20 +88,20 @@
   }
   async function saveGame() {
     const ref = getStableRef();
-    if (!ref) { try { window.Storage.setItem('stableData_v2', StableState); } catch(e){} return; }
+    if (!ref) { try { localStorage.setItem('dotStableData_v2', JSON.stringify(StableState)); } catch(e){} return; }
     try {
       await ref.set({ ...StableState, lastSaved: Date.now() }, { merge: true });
     } catch(err) {
       console.warn('[Stable] Firebase save failed:', err.message);
-      try { window.Storage.setItem('stableData_v2', StableState); } catch(e){}
+      try { localStorage.setItem('dotStableData_v2', JSON.stringify(StableState)); } catch(e){}
     }
   }
   async function loadGame() {
     const ref = getStableRef();
     if (!ref) {
       try {
-        const raw = window.Storage.getItem('stableData_v2');
-        if (raw) Object.assign(StableState, raw);
+        const raw = localStorage.getItem('dotStableData_v2');
+        if (raw) Object.assign(StableState, JSON.parse(raw));
       } catch(e){}
       return;
     }
@@ -109,11 +109,11 @@
       const snap = await ref.get();
       if (snap.exists) Object.assign(StableState, snap.data());
       else {
-        try { const raw = window.Storage.getItem('stableData_v2'); if(raw) Object.assign(StableState, raw); } catch(e){}
+        try { const raw = localStorage.getItem('dotStableData_v2'); if(raw) Object.assign(StableState, JSON.parse(raw)); } catch(e){}
       }
     } catch(err) {
       console.warn('[Stable] Firebase load failed:', err.message);
-      try { const raw = window.Storage.getItem('stableData_v2'); if(raw) Object.assign(StableState, raw); } catch(e){}
+      try { const raw = localStorage.getItem('dotStableData_v2'); if(raw) Object.assign(StableState, JSON.parse(raw)); } catch(e){}
     }
   }
 
