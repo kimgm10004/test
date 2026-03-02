@@ -145,7 +145,13 @@
     }
   }
 
+  // [메모리 누수 수정] bindEvents 중복 등록 방지 플래그
+  let _eventsBindDone = false;
+
   function bindEvents() {
+    if (_eventsBindDone) return; // 이미 등록됐으면 스킵
+    _eventsBindDone = true;
+
     document.getElementById('btnPlay')?.addEventListener('click', play);
     document.getElementById('btnPause')?.addEventListener('click', pause);
     document.getElementById('btnStop')?.addEventListener('click', stop);

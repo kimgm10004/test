@@ -592,7 +592,11 @@
     StableState.medicalSlots.forEach(s=>startMedicalTimer(s.horseId));
     StableState.breedingSlots.forEach(s=>startBreedingTimer(s));
   }
-  setInterval(renderStatusPanel, 10000);
+  // [메모리 누수 수정] setInterval 중복 방지 — 최초 1회만 등록
+  if (!window._stablePanelTimerStarted) {
+    window._stablePanelTimerStarted = true;
+    setInterval(renderStatusPanel, 10000);
+  }
 
   /* ---- Init ---- */
   async function initStable(){
