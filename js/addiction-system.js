@@ -66,10 +66,10 @@
      * 데이터 로드
      */
     loadData() {
-      const saved = localStorage.getItem('dot_racing_addiction');
+      const saved = window.Storage.getItem('addiction');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          return saved;
         } catch (e) {
           console.warn('[Addiction] Failed to load data');
         }
@@ -123,7 +123,7 @@
      */
     saveData() {
       try {
-        localStorage.setItem('dot_racing_addiction', JSON.stringify(this.data));
+        window.Storage.setItem('addiction', this.data);
         
         // [v5.2] Firebase 동기화
         if (window.FirebaseSync) {

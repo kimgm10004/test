@@ -170,11 +170,11 @@ class NFTSystem {
 
   saveToLocalStorage() {
     try {
-      localStorage.setItem('myNFTs', JSON.stringify(this.myNFTs));
-      localStorage.setItem('nftFreeBox', JSON.stringify({
+      window.Storage.setItem('myNFTs', this.myNFTs);
+      window.Storage.setItem('nftFreeBox', {
         date: this.lastFreeBoxDate,
         used: this.freeBoxUsed
-      }));
+      });
     } catch (err) {
       console.error('[NFT] localStorage 저장 실패:', err);
     }
@@ -182,10 +182,10 @@ class NFTSystem {
 
   loadFromLocalStorage() {
     try {
-      const stored = localStorage.getItem('myNFTs');
-      if (stored) this.myNFTs = JSON.parse(stored);
+      const stored = window.Storage.getItem('myNFTs');
+      if (stored) this.myNFTs = stored;
       
-      const freeData = JSON.parse(localStorage.getItem('nftFreeBox') || '{}');
+      const freeData = window.Storage.getItem('nftFreeBox') || {};
       this.lastFreeBoxDate = freeData.date;
       this.freeBoxUsed = freeData.used;
       

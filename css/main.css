@@ -1,0 +1,147 @@
+/* 도트 경마 v5.2 - 메인 스타일시트 */
+/* 분리일: 2026-03-02 */
+
+:root{--bg:#0b0e16;--panel:#0f1424;--line:#1f2940;--text:#c8d0ff;--title:#ffffff;--accent:#6C5CE7;--good:#9df7c7;--warn:#ffd26e;--bad:#ff7a9e;--gold:#FFD700}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
+.wrap{max-width:1400px;margin:0 auto;padding:14px}
+h1{margin:0 0 10px;color:var(--title);font-size:22px}
+h2{margin:16px 0 8px;color:var(--title);font-size:16px;border-bottom:2px solid var(--line);padding-bottom:4px}
+.grid{display:grid;grid-template-columns:650px 1fr;gap:12px}
+@media(max-width:1200px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+canvas{width:100%;height:auto;display:block;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1 1 auto}
+.pill{padding:6px 10px;border-radius:999px;background:#131a33;border:1px solid #1f2940;font-size:12px;white-space:nowrap}
+.money{font-weight:700;color:var(--warn)}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;transition:.2s}
+button:hover{opacity:.9}
+button.secondary{background:#1e2a53;color:#dbe1ff}
+button.ghost{background:transparent;border:1px solid var(--line);color:#dbe1ff}
+button:disabled{opacity:.6;cursor:not-allowed}
+select,input[type=number],input[type=email],input[type=password],input[type=text]{padding:8px 10px;border-radius:8px;border:1px solid #2a3557;background:#0d1330;color:#dbe1ff;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border-bottom:1px dashed var(--line);padding:6px 8px;text-align:center;white-space:nowrap}
+th{color:#9fb0ff;font-weight:600}
+.badge{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid var(--line);background:#111729}
+.lane{display:inline-block;width:16px;height:16px;border-radius:4px;margin-right:6px;vertical-align:middle}
+.ticket{background:#0e1531;border:1px solid var(--line);padding:8px;border-radius:8px;margin:6px 0;font-size:12px}
+.small{font-size:12px}
+.tiny{font-size:11px;opacity:.85}
+.right{text-align:right}
+.hint{font-size:12px;opacity:.75;margin-top:8px}
+.odds{font-variant-numeric:tabular-nums}
+.hr{height:1px;background:var(--line);margin:8px 0}
+.tag{display:inline-block;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:#141a33;font-size:12px}
+.totals{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,20,.65);z-index:9999;backdrop-filter:blur(4px)}
+
+/* [v5.2] 블록체인 스타일 */
+.blockchain-tx-item{background:#0d1325;border:1px solid #1a2332;border-radius:6px;padding:8px;margin:4px 0}
+.blockchain-tx-item .tx-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.blockchain-tx-item .tx-icon{font-size:14px}
+.blockchain-tx-item .tx-type{font-size:11px;font-weight:700}
+.blockchain-tx-item .tx-time{font-size:10px;color:#666}
+.blockchain-tx-item .tx-desc{font-size:11px;color:#ccc;margin:4px 0}
+.blockchain-tx-item .tx-hash{font-size:10px;color:#4a5568;font-family:monospace}
+#blockchainTxList::-webkit-scrollbar{width:6px}
+#blockchainTxList::-webkit-scrollbar-track{background:#0d0d1a}
+#blockchainTxList::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* [v5.2] 블록 마이닝 오버레이 */
+#blockchainMiningOverlay{position:fixed;inset:0;background:rgba(0,0,30,.9);display:none;align-items:center;justify-content:center;z-index:99999;flex-direction:column}
+#blockchainMiningOverlay .mining-box{background:#0f1424;border:2px solid #00ff88;border-radius:16px;padding:30px 50px;text-align:center;box-shadow:0 0 50px rgba(0,255,136,.2)}
+#blockchainMiningOverlay .mining-title{color:#00ff88;font-size:20px;font-weight:700;margin-bottom:20px}
+#blockchainMiningOverlay .mining-progress{width:300px;height:20px;background:#1a1a2e;border-radius:10px;overflow:hidden;margin:15px 0}
+#blockchainMiningOverlay .mining-progress-fill{height:100%;background:linear-gradient(90deg,#00ff88,#4ecdc4);transition:width .1s;border-radius:10px}
+#blockchainMiningOverlay .mining-status{color:#ccc;font-size:14px;margin:10px 0}
+#blockchainMiningOverlay .mining-hash{color:#666;font-size:11px;font-family:monospace;margin-top:10px}
+
+.modal .box{width:min(640px,94vw);max-height:90vh;overflow-y:auto;background:#0f1424;border:1px solid #1f2940;border-radius:12px;padding:16px}
+.modal .row{margin-top:8px}
+.hl{border-color:#ff6b6b!important;box-shadow:0 0 0 2px rgba(255,107,107,.25)}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:2px solid var(--line)}
+.tabs button{border-radius:8px 8px 0 0;background:transparent;border:0;color:#8890b0;padding:8px 16px;transition:.2s;cursor:pointer}
+.tabs button.active{background:var(--accent);color:#fff}
+.stat-card{background:#131a33;border:1px solid var(--line);border-radius:8px;padding:10px;margin:6px 0}
+.progress-bar{height:8px;background:#1f2940;border-radius:4px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--good));transition:width .3s}
+.leaderboard-item{display:flex;align-items:center;padding:8px;border-bottom:1px solid var(--line);gap:12px}
+.leaderboard-rank{font-size:18px;font-weight:700;width:30px;text-align:center}
+.leaderboard-rank.gold{color:var(--gold)}
+.leaderboard-rank.silver{color:#C0C0C0}
+.leaderboard-rank.bronze{color:#CD7F32}
+.horse-card{background:#0e1531;border:1px solid var(--line);padding:12px;border-radius:8px;margin:8px 0;cursor:pointer;transition:.2s}
+.horse-card:hover{border-color:var(--accent)}
+.horse-card h3{margin:0 0 8px;color:var(--title);font-size:14px}
+.bloodline{color:#feca57;font-size:11px}
+.form-indicator{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:4px;margin:0 2px;font-size:11px;font-weight:700}
+.form-1{background:#9df7c7;color:#0b0e16}
+.form-2{background:#ffd26e;color:#0b0e16}
+.form-3{background:#ff9ff3;color:#0b0e16}
+.form-4{background:#8890b0;color:#0b0e16}
+.form-5{background:#ff7a9e;color:#fff}
+.clickable{cursor:pointer;color:#6C5CE7;text-decoration:underline;transition:.2s}
+.clickable:hover{color:#9df7c7}
+.history-modal{width:min(800px,96vw)!important}
+.chart-container{height:200px;margin:16px 0;background:#0b0e16;border-radius:8px;padding:12px}
+.bar-chart{display:flex;align-items:flex-end;justify-content:space-around;height:160px;gap:4px}
+.bar{flex:1;background:linear-gradient(to top,var(--accent),var(--good));border-radius:4px 4px 0 0;position:relative;transition:.3s}
+.bar:hover{opacity:.8}
+.bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;white-space:nowrap}
+.bar-value{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700}
+.history-table{width:100%;font-size:12px;margin-top:12px}
+.history-table th{background:#1a2332;padding:8px;text-align:left}
+.history-table td{padding:6px 8px;border-bottom:1px solid #1f2940}
+.rank-1{color:#FFD700;font-weight:700}
+.rank-2{color:#C0C0C0;font-weight:700}
+.rank-3{color:#CD7F32;font-weight:700}
+.weight{font-weight:700;color:#ffd26e}
+.odds-change-up{color:#9df7c7;animation:pulse-green 1s}
+.odds-change-down{color:#ff7a9e;animation:pulse-red 1s}
+@keyframes pulse-green{0%{transform:scale(1)}50%{transform:scale(1.2);color:#00ff88}100%{transform:scale(1)}}
+@keyframes pulse-red{0%{transform:scale(1)}50%{transform:scale(1.2);color:#ff0044}100%{transform:scale(1)}}
+.live-commentary{font-size:13px;line-height:1.6;background:#0a0e1a;border-left:3px solid var(--accent);padding:10px 12px;margin-top:8px;border-radius:4px}
+.live-commentary .highlight{color:var(--warn);font-weight:700}
+.live-commentary .position{color:#9df7c7;font-weight:700}
+.api-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+/* 스크롤바 완전 숨기기 */
+::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
+html,body{overflow-x:hidden}
+div[style*="overflow"]{scrollbar-width:none!important;-ms-overflow-style:none!important}
+div[style*="overflow"]::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+.api-status.ok{background:#9df7c7}
+.api-status.fail{background:#ff7a9e}
+.api-status.loading{background:#ffd26e;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.tier-bronze{background:#cd7f32!important;color:#fff!important;border-color:#cd7f32!important}
+.tier-silver{background:#c0c0c0!important;color:#333!important;border-color:#c0c0c0!important}
+.tier-gold{background:#ffd700!important;color:#333!important;border-color:#ffd700!important}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+
+/* 리플레이 모달 스타일 */
+.replay-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(4px); }
+.replay-modal.show { display: flex; }
+.replay-container { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 20px; max-width: 900px; width: 95%; border: 2px solid #4ECDC4; box-shadow: 0 0 30px rgba(78, 205, 196, 0.3); }
+.replay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+.replay-title { font-size: 18px; color: #4ECDC4; font-weight: bold; }
+.replay-close { background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.replay-close:hover { background: #c0392b; }
+.replay-canvas-container { position: relative; width: 100%; background: #0a0a1a; border-radius: 8px; overflow: hidden; margin-bottom: 15px; min-height: 400px; }
+#replayCanvas { width: 100%; height: auto; display: block; background: #0a0a1a; }
+.replay-controls { display: flex; align-items: center; gap: 12px; padding: 10px; background: #0f0f23; border-radius: 8px; }
+.replay-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+.replay-btn-play { background: #4ECDC4; color: #1a1a2e; }
+.replay-btn-play:hover { background: #45b7aa; }
+.replay-btn-pause { background: #f39c12; color: white; }
+.replay-btn-pause:hover { background: #e67e22; }
+.replay-progress { flex: 1; display: flex; align-items: center; gap: 8px; }
+.replay-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; background: #333; border-radius: 3px; outline: none; }
+.replay-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #4ECDC4; border-radius: 50%; cursor: pointer; }
+.replay-info { display: flex; gap: 10px; font-size: 12px; color: #888; }
+.replay-info span { padding: 4px 10px; background: #1a1a2e; border-radius: 4px; }
+.replay-auto-close { margin-top: 10px; text-align: center; font-size: 12px; color: #666; }
+
+canvas { image-rendering: pixelated; }
