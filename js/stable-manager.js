@@ -1346,7 +1346,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
       '</div>' +
       '<div style="background:#0f1422;border:1px solid #1a2540;border-radius:10px;padding:14px;margin-bottom:14px;">' +
         '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;">💱 DOT → DOTT 환전</div>' +
-        '<div style="font-size:11px;color:#7f8fb5;margin-bottom:8px;">환율: 1,000 DOT = 1 DOTT &nbsp;|&nbsp; DOTT→DOT 역환전 불가</div>' +
+        '<div style="font-size:11px;color:#7f8fb5;margin-bottom:8px;">환율: 1 DOT = 1,000 DOTT &nbsp;|&nbsp; DOTT→DOT 역환전 불가</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           '<input id="bankDotInput" type="number" min="1" step="1" placeholder="DOT 입력"' +
           ' style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #1a2540;background:#060c18;color:#dde4f5;font-size:13px;"' +
