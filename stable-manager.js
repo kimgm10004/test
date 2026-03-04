@@ -23,7 +23,7 @@
   const MEDICAL_RECOVER      = window.GAME_CONFIG?.MEDICAL_RECOVER      ?? 50; // [game-config.js]
   const BREED_BASE_COST      = window.GAME_CONFIG?.BREED_BASE_COST      ?? 200000; // [game-config.js]
   const MARKET_REFRESH_COST  = window.GAME_CONFIG?.MARKET_REFRESH_COST  ?? 50000; // [game-config.js]
-  const MARKET_REFRESH_COST_DOTT = Math.ceil((window.GAME_CONFIG?.MARKET_REFRESH_COST ?? 50000) / 1000); // [DOT Fix] 50 DOTT
+  const MARKET_REFRESH_COST_DOTT = (window.GAME_CONFIG?.MARKET_REFRESH_COST ?? 50000); // [Rate v2] 50,000 DOTT
 
   // [game-config.js] HORSE_GRADES는 GAME_CONFIG.HORSE_GRADES 참조
 const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
@@ -198,7 +198,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   function buyHorse(index) {
     const horse = marketHorses[index]; if (!horse) return;
     if (StableState.horses.length >= getMaxHorses()) { showToast('마방 부족!','warn'); return; }
-    const dottPrice = Math.ceil(horse.value / 1000); // [DOT Fix] DOTT 가격
+    const dottPrice = horse.value; // [Rate v2] DOT 가격 수치 = DOTT 가격 수치 (1:1 수치, 단위 DOTT)
     if ((StableState.dottWallet||0) < dottPrice) { showToast('DOTT 부족! 필요: '+dottPrice+' DOTT','warn'); return; }
     StableState.dottWallet -= dottPrice;
     addDottHistory('buy_horse', -dottPrice, horse.name+' 구매 ('+horse.grade+'등급)');
@@ -215,7 +215,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   function sellHorse(horseId) {
     const horse = StableState.horses.find(h=>h.id===horseId); if (!horse) return;
     if (horse.status !== 'available') { showToast('작업중인 말은 판매 불가','warn'); return; }
-    const dottSell = Math.max(1, Math.ceil(Math.floor(horse.value * 0.7) / 1000)); // [DOT Fix] DOTT 판매가
+    const dottSell = Math.floor(horse.value * 0.7); // [Rate v2] 판매가 70% DOTT
     if (!confirm(horse.name + ' 을(를) ' + fmtDott(dottSell) + '에 판매? (말 가치의 70%)')) return;
     StableState.dottWallet = (StableState.dottWallet||0) + dottSell;
     addDottHistory('sell_horse', dottSell, horse.name+' 판매 +'+dottSell+' DOTT');
@@ -429,7 +429,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
 
   function breedCost() { return Math.floor(BREED_BASE_COST*(1-(StableState.facilities.breeding-1)*0.05)); }
   // [v5.3 Phase3] DOTT 번식 비용: 번식장 Lv1=200, 할인율 5%/레벨
-  function breedCostDott() { return Math.max(50, Math.floor(200*(1-(StableState.facilities.breeding-1)*0.05))); }
+  function breedCostDott() { return Math.max(50000, Math.floor(200000*(1-(StableState.facilities.breeding-1)*0.05))); } // [Rate v2]
   function confirmBreeding() {
     const maleId   = document.getElementById('breedSelectMale')?.value;
     const femaleId = document.getElementById('breedSelectFemale')?.value;
@@ -609,8 +609,8 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   function upgradeCostDott(type) {
     const level = StableState.facilities[type] || 0;
     const baseDot = window.GAME_CONFIG?.STABLE_UPGRADE_BASE ?? { barn:50000, training:70000, medical:60000, breeding:150000 };
-    const baseDott = { barn:50, training:70, medical:60, breeding:150 }; // DOT ÷ 1,000
-    const base = baseDott[type] || Math.ceil((baseDot[type]||50000) / 1000);
+    const baseDott = { barn:50000, training:70000, medical:60000, breeding:150000 }; // [Rate v2] DOT 수치 = DOTT 수치
+    const base = baseDott[type] || (baseDot[type]||50000); // [Rate v2] 수치 동일
     return Math.ceil(base * Math.pow(window.GAME_CONFIG?.STABLE_UPGRADE_RATE ?? 1.8, level));
   }
   function upgradeCost(type) { // 하위호환성 유지 (DOT 단위 — 내부 참조용)
@@ -686,7 +686,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
       horse.honorTitle = calcHonorTitle(horse.wins);
       // [v5.3 Phase2] DOTT 우승 적립: 상금 1% ÷ 1000
       if(prizeAmount && prizeAmount > 0){
-        const dottReward = Math.floor(prizeAmount * 0.01 / 1000);
+        const dottReward = Math.floor(prizeAmount * 0.01); // [Rate v2] 상금 1% = DOTT
         if(dottReward > 0){
           StableState.dottWallet = (StableState.dottWallet||0) + dottReward;
           horse.dottEarned = (horse.dottEarned||0) + dottReward;
@@ -730,16 +730,16 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   // [v5.3 Phase5] 일일 퀘스트 시스템
   // ══════════════════════════════════════════════════════════
   const QUEST_POOL = [
-    { id:'q_race1',   title:'첫 출전',     desc:'말을 경주에 1회 출전시키기',   req:{type:'races',  n:1},  reward:{dott:50,  dot:0} },
-    { id:'q_race3',   title:'레이스 삼연전',desc:'말을 경주에 3회 출전시키기',   req:{type:'races',  n:3},  reward:{dott:150, dot:0} },
-    { id:'q_win1',    title:'첫 우승',      desc:'경주에서 1번 우승하기',         req:{type:'wins',   n:1},  reward:{dott:100, dot:50000} },
-    { id:'q_win3',    title:'3연승 도전',   desc:'경주에서 3번 우승하기',         req:{type:'wins',   n:3},  reward:{dott:300, dot:100000} },
-    { id:'q_train2',  title:'훈련 열정',    desc:'말을 2회 훈련시키기',           req:{type:'trains', n:2},  reward:{dott:80,  dot:0} },
-    { id:'q_breed1',  title:'번식 시작',    desc:'번식을 1회 시작하기',           req:{type:'breed',  n:1},  reward:{dott:200, dot:0} },
-    { id:'q_heal1',   title:'건강 관리',    desc:'말을 1회 치료하기',             req:{type:'heal',   n:1},  reward:{dott:60,  dot:0} },
-    { id:'q_market1', title:'시장 구경',    desc:'말 시장을 새로고침하기',        req:{type:'market', n:1},  reward:{dott:30,  dot:0} },
-    { id:'q_enhance1',title:'강화 도전',    desc:'말을 1회 강화하기',             req:{type:'enhance',n:1},  reward:{dott:150, dot:0} },
-    { id:'q_fitness', title:'컨디션 회복',  desc:'말 컨디션을 80% 이상으로 만들기',req:{type:'fitness',n:80}, reward:{dott:100, dot:0} },
+    { id:'q_race1',   title:'첫 출전',     desc:'말을 경주에 1회 출전시키기',   req:{type:'races',  n:1},  reward:{dott:50000,  dot:0} },
+    { id:'q_race3',   title:'레이스 삼연전',desc:'말을 경주에 3회 출전시키기',   req:{type:'races',  n:3},  reward:{dott:150000, dot:0} },
+    { id:'q_win1',    title:'첫 우승',      desc:'경주에서 1번 우승하기',         req:{type:'wins',   n:1},  reward:{dott:100000, dot:50000} },
+    { id:'q_win3',    title:'3연승 도전',   desc:'경주에서 3번 우승하기',         req:{type:'wins',   n:3},  reward:{dott:300000, dot:100000} },
+    { id:'q_train2',  title:'훈련 열정',    desc:'말을 2회 훈련시키기',           req:{type:'trains', n:2},  reward:{dott:80000,  dot:0} },
+    { id:'q_breed1',  title:'번식 시작',    desc:'번식을 1회 시작하기',           req:{type:'breed',  n:1},  reward:{dott:200000, dot:0} },
+    { id:'q_heal1',   title:'건강 관리',    desc:'말을 1회 치료하기',             req:{type:'heal',   n:1},  reward:{dott:60000,  dot:0} },
+    { id:'q_market1', title:'시장 구경',    desc:'말 시장을 새로고침하기',        req:{type:'market', n:1},  reward:{dott:30000,  dot:0} },
+    { id:'q_enhance1',title:'강화 도전',    desc:'말을 1회 강화하기',             req:{type:'enhance',n:1},  reward:{dott:150000, dot:0} },
+    { id:'q_fitness', title:'컨디션 회복',  desc:'말 컨디션을 80% 이상으로 만들기',req:{type:'fitness',n:80}, reward:{dott:100000, dot:0} },
   ];
 
   function initDailyQuests() {
@@ -843,7 +843,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   // ══════════════════════════════════════════════════════════
   // [v5.3 Phase5] 말 강화 시스템 (DOTT 소비)
   // ══════════════════════════════════════════════════════════
-  const ENHANCE_COST_DOTT = 300;   // 기본 강화 비용
+  const ENHANCE_COST_DOTT = 300000; // [Rate v2] 기본 강화 비용
   const ENHANCE_MAX_LEVEL = 10;    // 최대 강화 레벨
 
   function enhanceHorse(horseId) {
@@ -1049,31 +1049,31 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   // ══════════════════════════════════════════════════════════
   const ACHIEVEMENT_LIST = [
     // 경주 업적
-    { id:'ach_first_race',   cat:'경주', icon:'🏁', name:'첫 출전',       desc:'경주에 처음 출전하기',              check: s => (s.horses||[]).some(h=>(h.races||0)>=1) || (s.hallOfFame||[]).some(h=>(h.races||0)>=1),  reward:{dott:100} },
-    { id:'ach_first_win',    cat:'경주', icon:'🥇', name:'첫 우승',       desc:'경주에서 처음 우승하기',            check: s => (s.horses||[]).some(h=>(h.wins||0)>=1)  || (s.hallOfFame||[]).some(h=>(h.wins||0)>=1),   reward:{dott:200} },
-    { id:'ach_10wins',       cat:'경주', icon:'⭐',  name:'10승 달성',     desc:'한 말로 10승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=10) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=10),  reward:{dott:500,dot:100000} },
-    { id:'ach_30wins',       cat:'경주', icon:'👑',  name:'30승 레전드',   desc:'한 말로 30승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=30) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=30),  reward:{dott:1000,dot:500000} },
-    { id:'ach_50wins',       cat:'경주', icon:'🌟',  name:'50승 신화',     desc:'한 말로 50승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=50) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=50),  reward:{dott:3000,dot:1000000} },
+    { id:'ach_first_race',   cat:'경주', icon:'🏁', name:'첫 출전',       desc:'경주에 처음 출전하기',              check: s => (s.horses||[]).some(h=>(h.races||0)>=1) || (s.hallOfFame||[]).some(h=>(h.races||0)>=1),  reward:{dott:100000} },
+    { id:'ach_first_win',    cat:'경주', icon:'🥇', name:'첫 우승',       desc:'경주에서 처음 우승하기',            check: s => (s.horses||[]).some(h=>(h.wins||0)>=1)  || (s.hallOfFame||[]).some(h=>(h.wins||0)>=1),   reward:{dott:200000} },
+    { id:'ach_10wins',       cat:'경주', icon:'⭐',  name:'10승 달성',     desc:'한 말로 10승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=10) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=10),  reward:{dott:500000,dot:100000} },
+    { id:'ach_30wins',       cat:'경주', icon:'👑',  name:'30승 레전드',   desc:'한 말로 30승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=30) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=30),  reward:{dott:1000000,dot:500000} },
+    { id:'ach_50wins',       cat:'경주', icon:'🌟',  name:'50승 신화',     desc:'한 말로 50승 달성하기',             check: s => (s.horses||[]).some(h=>(h.wins||0)>=50) || (s.hallOfFame||[]).some(h=>(h.wins||0)>=50),  reward:{dott:3000000,dot:1000000} },
     // 목장 업적
-    { id:'ach_5horses',      cat:'목장', icon:'🐴', name:'5마리 목장',    desc:'말 5마리 보유하기',                 check: s => (s.horses||[]).length >= 5,            reward:{dott:200} },
-    { id:'ach_breed1',       cat:'목장', icon:'🐣', name:'첫 번식',       desc:'번식을 1회 완료하기',               check: s => (s.horses||[]).some(h=>h.acquired?.method==='breeding'), reward:{dott:300} },
-    { id:'ach_sss_born',     cat:'목장', icon:'💫', name:'SSS 탄생',      desc:'SSS 등급 말 번식하기',              check: s => (s.horses||[]).concat(s.hallOfFame||[]).some(h=>h.grade==='SSS'&&h.acquired?.method==='breeding'), reward:{dott:2000,dot:500000} },
-    { id:'ach_enhance5',     cat:'목장', icon:'🔨', name:'강화 Lv5',      desc:'말을 Lv.5까지 강화하기',            check: s => (s.horses||[]).some(h=>(h.enhanceLevel||0)>=5), reward:{dott:500} },
-    { id:'ach_enhance10',    cat:'목장', icon:'⚡',  name:'최대 강화',     desc:'말을 Lv.10 최대 강화하기',          check: s => (s.horses||[]).some(h=>(h.enhanceLevel||0)>=10), reward:{dott:2000,dot:300000} },
+    { id:'ach_5horses',      cat:'목장', icon:'🐴', name:'5마리 목장',    desc:'말 5마리 보유하기',                 check: s => (s.horses||[]).length >= 5,            reward:{dott:200000} },
+    { id:'ach_breed1',       cat:'목장', icon:'🐣', name:'첫 번식',       desc:'번식을 1회 완료하기',               check: s => (s.horses||[]).some(h=>h.acquired?.method==='breeding'), reward:{dott:300000} },
+    { id:'ach_sss_born',     cat:'목장', icon:'💫', name:'SSS 탄생',      desc:'SSS 등급 말 번식하기',              check: s => (s.horses||[]).concat(s.hallOfFame||[]).some(h=>h.grade==='SSS'&&h.acquired?.method==='breeding'), reward:{dott:2000000,dot:500000} },
+    { id:'ach_enhance5',     cat:'목장', icon:'🔨', name:'강화 Lv5',      desc:'말을 Lv.5까지 강화하기',            check: s => (s.horses||[]).some(h=>(h.enhanceLevel||0)>=5), reward:{dott:500000} },
+    { id:'ach_enhance10',    cat:'목장', icon:'⚡',  name:'최대 강화',     desc:'말을 Lv.10 최대 강화하기',          check: s => (s.horses||[]).some(h=>(h.enhanceLevel||0)>=10), reward:{dott:2000000,dot:300000} },
     // 명예 업적
-    { id:'ach_retire1',      cat:'명예', icon:'🏅', name:'첫 은퇴',       desc:'말을 명예의 전당에 은퇴시키기',     check: s => (s.hallOfFame||[]).length >= 1,        reward:{dott:400} },
-    { id:'ach_retire5',      cat:'명예', icon:'🏆', name:'전당 5마리',    desc:'명예의 전당에 5마리 등록하기',      check: s => (s.hallOfFame||[]).length >= 5,        reward:{dott:1500,dot:200000} },
+    { id:'ach_retire1',      cat:'명예', icon:'🏅', name:'첫 은퇴',       desc:'말을 명예의 전당에 은퇴시키기',     check: s => (s.hallOfFame||[]).length >= 1,        reward:{dott:400000} },
+    { id:'ach_retire5',      cat:'명예', icon:'🏆', name:'전당 5마리',    desc:'명예의 전당에 5마리 등록하기',      check: s => (s.hallOfFame||[]).length >= 5,        reward:{dott:1500000,dot:200000} },
     // 경제 업적
     { id:'ach_dott1000',     cat:'경제', icon:'🪙', name:'DOTT 1,000',   desc:'DOTT 1,000개 이상 보유하기',         check: s => (s.dottWallet||0) >= 1000,             reward:{dot:50000} },
     { id:'ach_dott10000',    cat:'경제', icon:'💎', name:'DOTT 10,000',  desc:'DOTT 10,000개 이상 보유하기',        check: s => (s.dottWallet||0) >= 10000,            reward:{dot:500000} },
-    { id:'ach_quest10',      cat:'경제', icon:'📋', name:'퀘스트 10회',  desc:'퀘스트를 10개 완료하기',             check: s => (s.questCompleted||0) >= 10,           reward:{dott:300} },
-    { id:'ach_quest30',      cat:'경제', icon:'📜', name:'퀘스트 달인',  desc:'퀘스트를 30개 완료하기',             check: s => (s.questCompleted||0) >= 30,           reward:{dott:1000,dot:100000} },
+    { id:'ach_quest10',      cat:'경제', icon:'📋', name:'퀘스트 10회',  desc:'퀘스트를 10개 완료하기',             check: s => (s.questCompleted||0) >= 10,           reward:{dott:300000} },
+    { id:'ach_quest30',      cat:'경제', icon:'📜', name:'퀘스트 달인',  desc:'퀘스트를 30개 완료하기',             check: s => (s.questCompleted||0) >= 30,           reward:{dott:1000000,dot:100000} },
     // 시설 업적
-    { id:'ach_allLv3',       cat:'시설', icon:'🏗️', name:'시설 Lv3',     desc:'모든 시설을 Lv.3 이상으로 올리기',  check: s => Object.values(s.facilities||{}).every(v=>(v||0)>=3), reward:{dott:600} },
-    { id:'ach_allLv5',       cat:'시설', icon:'🏰', name:'최강 목장',    desc:'모든 시설을 Lv.5 이상으로 올리기',   check: s => Object.values(s.facilities||{}).every(v=>(v||0)>=5), reward:{dott:2000,dot:1000000} },
+    { id:'ach_allLv3',       cat:'시설', icon:'🏗️', name:'시설 Lv3',     desc:'모든 시설을 Lv.3 이상으로 올리기',  check: s => Object.values(s.facilities||{}).every(v=>(v||0)>=3), reward:{dott:600000} },
+    { id:'ach_allLv5',       cat:'시설', icon:'🏰', name:'최강 목장',    desc:'모든 시설을 Lv.5 이상으로 올리기',   check: s => Object.values(s.facilities||{}).every(v=>(v||0)>=5), reward:{dott:2000000,dot:1000000} },
     // 점수 업적
-    { id:'ach_score3000',    cat:'목장', icon:'⭐',  name:'성장 목장',    desc:'목장 점수 3,000점 달성',             check: s => calcStableScore() >= 3000,             reward:{dott:500} },
-    { id:'ach_score20000',   cat:'목장', icon:'🌟',  name:'전설 목장',    desc:'목장 점수 20,000점 달성',            check: s => calcStableScore() >= 20000,            reward:{dott:3000,dot:2000000} },
+    { id:'ach_score3000',    cat:'목장', icon:'⭐',  name:'성장 목장',    desc:'목장 점수 3,000점 달성',             check: s => calcStableScore() >= 3000,             reward:{dott:500000} },
+    { id:'ach_score20000',   cat:'목장', icon:'🌟',  name:'전설 목장',    desc:'목장 점수 20,000점 달성',            check: s => calcStableScore() >= 20000,            reward:{dott:3000000,dot:2000000} },
   ];
 
   function checkAchievements(silent) {
@@ -1200,7 +1200,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   // ══════════════════════════════════════════════════════════
   const HORSE_TO_NFT_RARITY = { C:'N', B:'R', A:'SR', S:'HR', SS:'LR', SSS:'MR' };
   const NFT_TO_HORSE_GRADE  = { N:'C', R:'B', SR:'A', HR:'S', LR:'SS', MR:'SSS' };
-  const MINT_COST_DOTT = 500;  // 목장말→NFT 민팅 비용
+  const MINT_COST_DOTT = 500000; // [Rate v2] 목장말→NFT 민팅 비용
 
   // 목장말 → NFT 민팅
   function mintHorseAsNFT(horseId) {
@@ -1301,10 +1301,10 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
   // ── [v5.3 Phase3] 은행 — DOT→DOTT 일방향 환전 (역환전 없음)
   function exchangeDotToDott(dotAmount){
     const amount = Math.floor(Number(dotAmount));
-    if(!amount || amount < 1000)      { showToast('최소 1,000 DOT 필요','warn'); return; }
-    if(amount % 1000 !== 0)           { showToast('1,000 DOT 단위로 입력하세요','warn'); return; }
+    if(!amount || amount < 1)         { showToast('최소 1 DOT 필요','warn'); return; } // [Rate v2]
+    // [Rate v2] 1 DOT 단위 허용 — 단위 제한 없음
     if(getMainWallet() < amount)      { showToast('DOT 잔액 부족! (보유: '+fmtDot(getMainWallet())+')','warn'); return; }
-    const dott = Math.floor(amount / 1000);
+    const dott = amount * 1000; // [Rate v2] 1 DOT = 1,000 DOTT
     setMainWallet(getMainWallet() - amount); // [DOT Fix] 메인 지갑 차감 + DOM/Firebase 동기화
     StableState.dottWallet  = (StableState.dottWallet||0) + dott;
     StableState.bankLastExchange = Date.now();
@@ -1348,9 +1348,9 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
         '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;">💱 DOT → DOTT 환전</div>' +
         '<div style="font-size:11px;color:#7f8fb5;margin-bottom:8px;">환율: 1,000 DOT = 1 DOTT &nbsp;|&nbsp; DOTT→DOT 역환전 불가</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
-          '<input id="bankDotInput" type="number" min="1000" step="1000" placeholder="DOT 입력 (1,000 단위)"' +
+          '<input id="bankDotInput" type="number" min="1" step="1" placeholder="DOT 입력"' +
           ' style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #1a2540;background:#060c18;color:#dde4f5;font-size:13px;"' +
-          ' oninput="var v=Math.floor(Number(this.value)/1000);var el=document.getElementById(\'bankPreview\');if(el)el.textContent=v>0?\'→ \'+v+\' DOTT\':\'\';"/>' +
+          ' oninput="var v=Math.floor(Number(this.value)*1000);var el=document.getElementById(\'bankPreview\');if(el)el.textContent=v>0?\'→ \'+v.toLocaleString()+\' DOTT\':\'\';"/>' +
           '<span id="bankPreview" style="min-width:80px;font-size:12px;color:#ff9f43;font-weight:700;"></span>' +
           '<button onclick="exchangeDotToDott(document.getElementById(\'bankDotInput\').value)"' +
           ' style="padding:9px 16px;border-radius:8px;border:0;background:#ff9f43;color:#000;font-size:13px;font-weight:700;cursor:pointer;">환전</button>' +
@@ -1577,7 +1577,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
         '<div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:700;color:#fff;">'+horse.name+'</span>'+
         '<span style="padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:'+GRADE_COLORS[horse.grade]+'22;color:'+GRADE_COLORS[horse.grade]+';border:1px solid '+GRADE_COLORS[horse.grade]+'66;">'+horse.grade+'</span></div>'+
-        '<span style="font-size:13px;font-weight:700;color:#f5c842;">'+Math.ceil(horse.value/1000).toLocaleString()+' DOTT'+'</span></div>'+
+        '<span style="font-size:13px;font-weight:700;color:#f5c842;">'+(horse.value||0).toLocaleString()+' DOTT'+'</span></div>'+
       '<div style="font-size:12px;color:#7f8fb5;margin-bottom:8px;">'+(horse.gender==='male'?'🔵 수말':'🔴 암말')+' | '+horse.age+'세 | '+horse.coat+'</div>'+
       '<div style="display:flex;gap:10px;font-size:13px;"><span>⚡ <strong style="color:#4f8ef7;">'+horse.stats.speed+'</strong></span><span>💨 <strong style="color:#3dd68c;">'+horse.stats.stamina+'</strong></span><span>🔥 <strong style="color:#f26b6b;">'+horse.stats.burst+'</strong></span></div></div>'
     ).join('');
@@ -1630,7 +1630,7 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
           '</div>'+
           '<div style="background:#060c18;border-radius:6px;padding:8px;text-align:center;">'+
             '<div style="color:#7f8fb5;margin-bottom:3px;">시장 가치</div>'+
-            '<div style="color:#4ecdc4;font-weight:700;font-size:12px;">'+Math.ceil((horse.value||0)/1000).toLocaleString()+' DOTT'+'</div>'+
+            '<div style="color:#4ecdc4;font-weight:700;font-size:12px;">'+(horse.value||0).toLocaleString()+' DOTT'+'</div>'+
           '</div>'+
           '<div style="background:#060c18;border-radius:6px;padding:8px;text-align:center;">'+
             '<div style="color:#7f8fb5;margin-bottom:3px;">누적 DOTT</div>'+
