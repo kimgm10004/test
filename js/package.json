@@ -1,0 +1,17 @@
+{
+  "name": "dot-horse-racing",
+  "version": "5.2.0",
+  "description": "도트 경마 - 마르코프 AI 기반 경마 게임",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    "jsdom": "^24.0.0"
+  }
+}

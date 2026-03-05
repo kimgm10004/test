@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>도트경마 v5.2 완벽 가이드</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* 헤더 */
+    .header {
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+      border-bottom: 2px solid #6C5CE7;
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.3);
+    }
+    
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #9df7c7, #6C5CE7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    /* 네비게이션 탭 */
+    .nav-tabs {
+      background: #0f0f23;
+      padding: 0 24px;
+      border-bottom: 1px solid #333;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .nav-tabs-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 4px;
+    }
+    
+    .nav-tab {
+      background: transparent;
+      border: none;
+      padding: 16px 24px;
+      color: #888;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    
+    .nav-tab:hover {
+      color: #fff;
+      background: rgba(108, 92, 231, 0.1);
+    }
+    
+    .nav-tab.active {
+      color: #9df7c7;
+      border-bottom-color: #9df7c7;
+      background: rgba(108, 92, 231, 0.2);
+    }
+    
+    /* 메인 콘텐츠 */
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+    
+    .section {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .section.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 24px;
+      color: #ffd26e;
+      border-left: 4px solid #ffd26e;
+      padding-left: 16px;
+    }
+    
+    h2 {
+      font-size: 24px;
+      margin: 32px 0 16px;
+      color: #9df7c7;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    h3 {
+      font-size: 18px;
+      margin: 24px 0 12px;
+      color: #6C5CE7;
+    }
+    
+    p {
+      margin-bottom: 16px;
+      font-size: 15px;
+      color: #ccc;
+    }
+    
+    /* 카드 스타일 */
+    .card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border: 1px solid rgba(108, 92, 231, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    
+    .card-highlight {
+      background: linear-gradient(135deg, rgba(157, 247, 199, 0.1), rgba(108, 92, 231, 0.1));
+      border-color: #9df7c7;
+    }
+    
+    /* 표 스타일 */
+    .table-container {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th {
+      background: linear-gradient(135deg, #6C5CE7, #9df7c7);
+      color: #fff;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #333;
+      color: #ddd;
+    }
+    
+    tr:nth-child(even) {
+      background: rgba(108, 92, 231, 0.05);
+    }
+    
+    tr:hover {
+      background: rgba(108, 92, 231, 0.1);
+    }
+    
+    /* 팁 박스 */
+    .tip-box {
+      background: linear-gradient(135deg, rgba(255, 210, 110, 0.15), rgba(255, 210, 110, 0.05));
+      border-left: 4px solid #ffd26e;
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+    
+    .tip-box.warning {
+      background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(255, 107, 157, 0.05));
+      border-left-color: #ff6b9d;
+    }
+    
+    .tip-box.info {
+      background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(108, 92, 231, 0.05));
+      border-left-color: #6C5CE7;
+    }
+    
+    /* 체크리스트 */
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .checklist li {
+      padding: 12px 0;
+      padding-left: 32px;
+      position: relative;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+    
+    .checklist li:before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: #9df7c7;
+      font-weight: bold;
+    }
+    
+    /* 배지 */
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 0 4px;
+    }
+    
+    .badge-g1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; }
+    .badge-g2 { background: linear-gradient(135deg, #C0C0C0, #808080); color: #000; }
+    .badge-g3 { background: linear-gradient(135deg, #CD7F32, #8B4513); color: #fff; }
+    .badge-green { background: #9df7c7; color: #000; }
+    .badge-purple { background: #6C5CE7; color: #fff; }
+    .badge-pink { background: #ff6b9d; color: #fff; }
+    
+    /* 단계 표시 */
+    .step {
+      display: flex;
+      gap: 16px;
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      align-items: flex-start;
+    }
+    
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6C5CE7, #9df7c7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-content h4 {
+      color: #ffd26e;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    
+    /* 반응형 */
+    @media (max-width: 768px) {
+      .title {
+        font-size: 18px;
+      }
+      
+      .nav-tab {
+        padding: 12px 16px;
+        font-size: 13px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      h2 {
+        font-size: 20px;
+      }
+      
+      .card {
+        padding: 16px;
+      }
+      
+      th, td {
+        padding: 8px;
+        font-size: 12px;
+      }
+    }
+    
+    /* 푸터 */
+    .footer {
+      text-align: center;
+      padding: 32px;
+      background: #0f0f23;
+      border-top: 1px solid #333;
+      margin-top: 48px;
+      color: #666;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 헤더 -->
+  <header class="header">
+    <div class="header-content" style="justify-content: center;">
+      <h1 class="title">📚 도트경마 완벽 가이드</h1>
+    </div>
+  </header>
+  
+  <!-- 네비게이션 탭 -->
+  <nav class="nav-tabs">
+    <div class="nav-tabs-content">
+      <button class="nav-tab active" onclick="showSection('gameplay')">🎮 게임방식</button>
+      <button class="nav-tab" onclick="showSection('betting')">🎯 베팅공략</button>
+      <button class="nav-tab" onclick="showSection('analysis')">📊 분석법</button>
+      <button class="nav-tab" onclick="showSection('stats')">⚡ 능력치</button>
+      <button class="nav-tab" onclick="showSection('bloodline')">🧬 혈통</button>
+      <button class="nav-tab" onclick="showSection('environment')">🌦️ 환경</button>
+      <button class="nav-tab" onclick="showSection('addiction')">🔥 연승&레벨</button>
+      <button class="nav-tab" onclick="showSection('coupon')">🎟️ 쿠폰</button>
+      <button class="nav-tab" onclick="showSection('tips')">💡 빠른팁</button>
+    </div>
+  </nav>
+  
+  <!-- 메인 콘텐츠 -->
+  <main class="main-content">
+    
+    <!-- 섹션 1: 게임 방식 -->
+    <section id="gameplay" class="section active">
+      <h1>🎮 게임 방식</h1>
+      
+      <div class="card">
+        <h2>경주 진행 흐름</h2>
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>베팅 (90초)</h4>
+            <p>플레이어가 베팅할 수 있는 시간입니다. 7가지 베팅 유형 중 선택하고 금액을 입력하세요.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>마감 (10초)</h4>
+            <p>베팅 마감 10초 전입니다. 더 이상 베팅을 변경할 수 없습니다.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>준비 (3초)</h4>
+            <p>출발 준비 단계입니다. 말들이 출발선에 섭니다.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>경주</h4>
+            <p>실제 경주가 진행됩니다. 실시간으로 말들의 위치를 확인할 수 있습니다.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h4>결과</h4>
+            <p>경주 결과가 발표되고 당첨금이 정산됩니다. 리플레이를 볼 수 있습니다.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>등급별 특징</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>등급</th>
+                <th>레이팅</th>
+                <th>1위 상금</th>
+                <th>출전 마릿수</th>
+                <th>특징</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-g1">G1</span></td>
+                <td>88-100</td>
+                <td>2.4억원</td>
+                <td>16두</td>
+                <td>최고급, 항상 만마 출전</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-g2">G2</span></td>
+                <td>83-93</td>
+                <td>1.44억원</td>
+                <td>14-16두</td>
+                <td>상급</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-g3">G3</span></td>
+                <td>78-88</td>
+                <td>7,200만원</td>
+                <td>14-16두</td>
+                <td>중상급</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-purple">OPEN</span></td>
+                <td>73-83</td>
+                <td>3,840만원</td>
+                <td>10-16두</td>
+                <td>공개 경주</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-green">1등급</span></td>
+                <td>68-78</td>
+                <td>2,400만원</td>
+                <td>10-16두</td>
+                <td>중급</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-pink">2등급</span></td>
+                <td>63-73</td>
+                <td>1,440만원</td>
+                <td>10-16두</td>
+                <td>하급</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box">
+          <strong>💡 팁:</strong> G1 경주는 항상 16두가 출전하므로 예측이 어렵습니다. 상위 3마리의 능력치를 꼼꼼히 비교하세요.
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>상금 분배</h2>
+        <p>총 상금은 다음과 같이 분배됩니다:</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>비율</th>
+                <th>G1 예시 (6억원 기준)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge" style="background: #FFD700; color: #000;">1위</span></td>
+                <td>40%</td>
+                <td>2.4억원</td>
+              </tr>
+              <tr>
+                <td><span class="badge" style="background: #C0C0C0; color: #000;">2위</span></td>
+                <td>25%</td>
+                <td>1.5억원</td>
+              </tr>
+              <tr>
+                <td><span class="badge" style="background: #CD7F32; color: #fff;">3위</span></td>
+                <td>15%</td>
+                <td>9,000만원</td>
+              </tr>
+              <tr>
+                <td>4위</td>
+                <td>8%</td>
+                <td>4,800만원</td>
+              </tr>
+              <tr>
+                <td>5위</td>
+                <td>5%</td>
+                <td>3,000만원</td>
+              </tr>
+              <tr>
+                <td>6위</td>
+                <td>4%</td>
+                <td>2,400만원</td>
+              </tr>
+              <tr>
+                <td>7위~16위</td>
+                <td>차등 (3%~0.1%)</td>
+                <td>1,800만원~600만원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>거리별 특징</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>거리 유형</th>
+                <th>거리</th>
+                <th>출전 마릿수</th>
+                <th>적합한 스타일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>단거리</td>
+                <td>1000-1200m</td>
+                <td>10-14두</td>
+                <td><span class="badge badge-purple">선행</span></td>
+              </tr>
+              <tr>
+                <td>중거리</td>
+                <td>1300-1700m</td>
+                <td>12-16두</td>
+                <td><span class="badge badge-green">선입</span></td>
+              </tr>
+              <tr>
+                <td>장거리</td>
+                <td>1800-2000m</td>
+                <td>10-14두</td>
+                <td><span class="badge badge-pink">추입</span> <span class="badge badge-purple">차입</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box info">
+          <strong>📌 참고:</strong> 거리가 길수록 지구력(stamina)과 스퍼트(burst)가 중요해집니다.
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 2: 베팅 공략법 -->
+    <section id="betting" class="section">
+      <h1>🎯 베팅 공략법</h1>
+      
+      <div class="card">
+        <h2>7가지 베팅 유형</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>베팅 유형</th>
+                <th>설명</th>
+                <th>테이크아웃</th>
+                <th>난이도</th>
+                <th>추천 대상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>단승</strong></td>
+                <td>1위 맞히기</td>
+                <td>16.5%</td>
+                <td>⭐⭐</td>
+                <td>초보자</td>
+              </tr>
+              <tr>
+                <td><strong>연승</strong></td>
+                <td>3위 내 진입</td>
+                <td>18%</td>
+                <td>⭐⭐</td>
+                <td>초보자</td>
+              </tr>
+              <tr>
+                <td><strong>복승</strong></td>
+                <td>1-2위 무순</td>
+                <td>21.5%</td>
+                <td>⭐⭐⭐</td>
+                <td>중급자</td>
+              </tr>
+              <tr>
+                <td><strong>쌍승</strong></td>
+                <td>1-2위 순서일치</td>
+                <td>24%</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>상급자</td>
+              </tr>
+              <tr>
+                <td><strong>복연승</strong></td>
+                <td>두 말 모두 3위 내</td>
+                <td>21.5%</td>
+                <td>⭐⭐⭐</td>
+                <td>중급자</td>
+              </tr>
+              <tr>
+                <td><strong>삼복승</strong></td>
+                <td>1-3위 무순</td>
+                <td>25%</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>고수</td>
+              </tr>
+              <tr>
+                <td><strong>삼쌍승</strong></td>
+                <td>1-3 순서일치</td>
+                <td>28%</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>전문가</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card card-highlight">
+        <h2>배당률 계산 공식</h2>
+        <div style="background: #0f0f23; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 16px; text-align: center; margin: 16px 0;">
+          <span style="color: #9df7c7;">배당률</span> = <br>
+          (<span style="color: #ffd26e;">총 베팅액</span> × (1 - <span style="color: #ff6b9d;">테이크아웃</span>)) ÷ <span style="color: #6C5CE7;">해당 베팅 금액</span>
+        </div>
+        <div class="tip-box">
+          <strong>💡 예시:</strong><br>
+          총 단승 베팅액: 1,000만원<br>
+          테이크아웃: 16.5%<br>
+          1번 마에 걸린 금액: 50만원<br>
+          <strong>배당률 = (10,000,000 × 0.835) ÷ 500,000 = 16.7배</strong>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>배당률 분석법</h2>
+        
+        <h3>✅ 과소평가된 말 (베팅 추천)</h3>
+        <ul class="checklist">
+          <li>배당률 5배 이하</li>
+          <li>RATING 80점 이상</li>
+          <li>컨디션 1.05 이상</li>
+          <li>S/A급 궁합</li>
+          <li>적합한 거리/스타일</li>
+        </ul>
+        <div class="tip-box">
+          <strong>💡 이유:</strong> 배당률이 낮다는 것은 많은 사람들이 그 말에 베팅했다는 의미입니다. 실력이 검증된 말일 확률이 높습니다.
+        </div>
+        
+        <h3>⚠️ 과대평가된 말 (주의)</h3>
+        <ul class="checklist">
+          <li>배당률 30배 이상</li>
+          <li>RATING 70점 미만</li>
+          <li>컨디션 0.95 이하</li>
+          <li>부적합한 거리/스타일</li>
+          <li>최근 성적 저조</li>
+        </ul>
+        <div class="tip-box warning">
+          <strong>⚠️ 주의:</strong> 높은 배당률은 유혹적이지만, 실제 승률이 낮습니다. 초보자는 피하세요.
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>베팅 전략</h2>
+        
+        <h3>🎯 초보자 전략</h3>
+        <p><strong>단승 + 연승 병행</strong></p>
+        <ul>
+          <li>단승: RATING 상위 1마리에 소액 베팅</li>
+          <li>연승: 동일한 말에 추가 베팅 (3위 내 보험)</li>
+        </ul>
+        <div class="tip-box info">
+          <strong>초보자 팁:</strong> 처음에는 소액으로 시작하며 게임 시스템을 익히세요. 1,000원~5,000원 단위로 베팅하세요.
+        </div>
+        
+        <h3>🎯 중급자 전략</h3>
+        <p><strong>복승 조합</strong></p>
+        <ul>
+          <li>RATING 상위 2-3마리 선정</li>
+          <li>복승으로 1-2위 조합 베팅</li>
+          <li>순서 상관없이 당첨 가능</li>
+        </ul>
+        
+        <h3>🎯 고수 전략</h3>
+        <p><strong>쌍승/삼복승</strong></p>
+        <ul>
+          <li>1-2위 순서까지 예측 (쌍승)</li>
+          <li>1-3위 무순 조합 (삼복승)</li>
+          <li>높은 배당률 노리기</li>
+        </ul>
+        <div class="tip-box warning">
+          <strong>⚠️ 주의:</strong> 고위험 베팅은 전체 자금의 5% 이내로만 하세요.
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 3: 분석법 -->
+    <section id="analysis" class="section">
+      <h1>📊 분석 방법</h1>
+      
+      <div class="card card-highlight">
+        <h2>말 선택 5단계 체크리스트</h2>
+        
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>RATING 점수 확인 (80점 이상)</h4>
+            <p>RATING은 말의 종합 능력치입니다. v5.2 공식: speed×0.35 + stamina×0.30 + burst×0.20 + jockeySkill×0.15</p>
+            <div class="tip-box info">
+              G1 경주에서는 RATING 85+ 말들이 우승 확률이 높습니다. (정규분포 적용)
+            </div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>스타일-거리 적합성</h4>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>거리</th>
+                    <th>추천 스타일</th>
+                    <th>보너스</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>단거리 (1000-1200m)</td>
+                    <td><span class="badge badge-purple">선행</span> <span class="badge badge-green">선입</span></td>
+                    <td>선행 +8% (전반)</td>
+                  </tr>
+                  <tr>
+                    <td>중거리 (1300-1700m)</td>
+                    <td><span class="badge badge-green">선입</span></td>
+                    <td>균형 +5%</td>
+                  </tr>
+                  <tr>
+                    <td>장거리 (1800-2000m)</td>
+                    <td><span class="badge badge-pink">추입</span> <span class="badge badge-purple">차입</span></td>
+                    <td>추입 +18% (후반)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>혈통 보정치 확인</h4>
+            <p>혈통(SIRE)에 따라 능력치 보너스가 적용됩니다.</p>
+            <ul>
+              <li>혈통을 클릭하여 보정치 확인</li>
+              <li>거리에 맞는 혈통 선택</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>컨디션 1.05 이상 확인</h4>
+            <p>컨디션은 0.88~1.12 범위에서 랜덤 결정됩니다.</p>
+            <div class="tip-box">
+              <strong>컨디션 1.10+</strong>: 최상의 컨디션 (승률 상승)<br>
+              <strong>컨디션 0.90-</strong>: 주의 필요 (승률 하)
+            </div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h4>S/A급 궁합 여부</h4>
+            <p>말의 스타일과 기수/조교사의 궁합을 확인하세요.</p>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>궁합 등급</th>
+                    <th>점수</th>
+                    <th>보너스</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="badge badge-g1">S급</span></td>
+                    <td>20+</td>
+                    <td>speed/stamina/burst 각 +7</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge badge-g2">A급</span></td>
+                    <td>15-19</td>
+                    <td>speed/stamina/burst 각 +4</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge badge-g3">B급</span></td>
+                    <td>10-14</td>
+                    <td>speed/stamina/burst 각 +2</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>AI 분석 활용법</h2>
+        
+        <h3>📰 핫이슈 체크</h3>
+        <ul>
+          <li><strong>날씨 정보:</strong> 비/ 예보시 지구력/스퍼트 중요성 ↑</li>
+          <li><strong>거리 특성:</strong> 해당 거리에 적합한 말 추천</li>
+          <li><strong>컨디션 알림:</strong> 1.05+ 컨디션 말 하이라이트</li>
+          <li><strong>배당률 변동:</strong> 과소/과대평가 감지</li>
+        </ul>
+        
+        <h3>⭐ 별점 평가</h3>
+        <p>말을 클릭하면 AI가 1-5성으로 평가합니다.</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>별점</th>
+                <th>의미</th>
+                <th>추천도</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>최우수</td>
+                <td>강력 추천</td>
+              </tr>
+              <tr>
+                <td>⭐⭐⭐⭐</td>
+                <td>우수</td>
+                <td>추천</td>
+              </tr>
+              <tr>
+                <td>⭐⭐⭐</td>
+                <td>보통</td>
+                <td>고려</td>
+              </tr>
+              <tr>
+                <td>⭐⭐</td>
+                <td>부족</td>
+                <td>주의</td>
+              </tr>
+              <tr>
+                <td>⭐</td>
+                <td>미흡</td>
+                <td>피하기</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <h3>🔍 클릭시 확인 정보</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>요소</th>
+                <th>확인 가능 정보</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>말</strong></td>
+                <td>혈통, 능력치, RATING, 최근 5경기, 마체중</td>
+              </tr>
+              <tr>
+                <td><strong>기수</strong></td>
+                <td>스킬, 스타일, 승률, 최근 10경기 추이</td>
+              </tr>
+              <tr>
+                <td><strong>혈통</strong></td>
+                <td>속도/지구력/스퍼트 보너스, 거리별 성적, 기수별 궁합</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 4: 능력치 -->
+    <section id="stats" class="section">
+      <h1>⚡ 능력치 & 스탯</h1>
+      
+      <div class="card">
+        <h2>3가지 핵심 능력치</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>능력치</th>
+                <th>설명</th>
+                <th>계산 공식</th>
+                <th>중요 스타일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color: #ff6b9d;">speed (속도)</strong></td>
+                <td>초반 속도 및 기본 속도</td>
+                <td>기본값 + SIRE 보너스</td>
+                <td><span class="badge badge-purple">선행</span> <span class="badge badge-green">선입</span></td>
+              </tr>
+              <tr>
+                <td><strong style="color: #9df7c7;">stamina (지구력)</strong></td>
+                <td>후반 체력 유지 능력</td>
+                <td>기본값 + SIRE 보너스</td>
+                <td><span class="badge badge-purple">차입</span></td>
+              </tr>
+              <tr>
+                <td><strong style="color: #ffd26e;">burst (스퍼트)</strong></td>
+                <td>후반 가속 능력</td>
+                <td>기본값 + SIRE 보너스</td>
+                <td><span class="badge badge-pink">추입</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card card-highlight">
+        <h2>RATING 계산 공식 (v5.2 물리 엔진)</h2>
+        <div style="background: #0f0f23; padding: 24px; border-radius: 12px; text-align: center; margin: 16px 0; border: 2px solid #6C5CE7;">
+          <div style="font-size: 18px; margin-bottom: 16px;">
+            <strong style="color: #ffd26e;">RATING</strong> = 
+          </div>
+          <div style="font-size: 16px; line-height: 2;">
+            <span style="color: #ff6b9d;">speed × 0.35</span> + <br>
+            <span style="color: #9df7c7;">stamina × 0.30</span> + <br>
+            <span style="color: #ffd26e;">burst × 0.20</span> + <br>
+            <span style="color: #6C5CE7;">jockeySkill × 0.15</span>
+          </div>
+        </div>
+        <div class="tip-box">
+          <strong>💡 예시:</strong><br>
+          speed: 90, stamina: 80, burst: 85, jockeySkill: 88인 경우<br>
+          <strong>RATING = 31.5 + 24 + 17 + 13.2 = 85.7</strong>
+        </div>
+        <div class="tip-box info">
+          <strong>📌 변경점 (v5.2):</strong><br>
+          • 정규분포 기반으로 더 현실적인 스탯 생성<br>
+          • 피로도 모델: 지수衰減 적용<br>
+          • 날씨 영향: 연속 함수로 정교화
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>5가지 스타일별 특성</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>스타일</th>
+                <th>능력치 특성</th>
+                <th>거리 적합성</th>
+                <th>궁합 보너스</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-purple">선행</span></td>
+                <td>속도 중심</td>
+                <td>단거리 최적</td>
+                <td>speed +5</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-green">선입</span></td>
+                <td>속도+지구력</td>
+                <td>중거리 적합</td>
+                <td>speed +3, stamina +2</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-pink">추입</span></td>
+                <td>스퍼트 특화</td>
+                <td>장거리 최적</td>
+                <td>burst +5</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-purple">차입</span></td>
+                <td>지구력 중심</td>
+                <td>장거리 적합</td>
+                <td>stamina +3, burst +2</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-green">만능</span></td>
+                <td>균형형</td>
+                <td>전 거리 가능</td>
+                <td>speed +2, stamina +2, burst +2</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>궁합 등급별 보너스</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>등급</th>
+                <th>점수</th>
+                <th>조건</th>
+                <th>speed</th>
+                <th>stamina</th>
+                <th>burst</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-g1">S급</span></td>
+                <td>20+</td>
+                <td>스타일 완전 일치 + 능력치 적합</td>
+                <td style="color: #9df7c7;">+7</td>
+                <td style="color: #9df7c7;">+7</td>
+                <td style="color: #9df7c7;">+7</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-g2">A급</span></td>
+                <td>15-19</td>
+                <td>스타일 일치</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+4</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-g3">B급</span></td>
+                <td>10-14</td>
+                <td>부분 일치</td>
+                <td style="color: #9df7c7;">+2</td>
+                <td style="color: #9df7c7;">+2</td>
+                <td style="color: #9df7c7;">+2</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-pink">C급</span></td>
+                <td>0-9</td>
+                <td>불일치</td>
+                <td style="color: #9df7c7;">+1</td>
+                <td style="color: #9df7c7;">+1</td>
+                <td style="color: #9df7c7;">+1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 5: 혈통 -->
+    <section id="bloodline" class="section">
+      <h1>🧬 혈통 & 궁합</h1>
+      
+      <div class="card">
+        <h2>10가지 혈통별 보정치</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>혈통 (SIRE)</th>
+                <th style="color: #ff6b9d;">speed</th>
+                <th style="color: #9df7c7;">stamina</th>
+                <th style="color: #ffd26e;">burst</th>
+                <th>특성</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Menifee</strong></td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td>균형</td>
+              </tr>
+              <tr>
+                <td><strong>Vicar</strong></td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td>지구력</td>
+              </tr>
+              <tr>
+                <td><strong>Exploit</strong></td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td>스퍼트</td>
+              </tr>
+              <tr>
+                <td><strong>Ecton Park</strong></td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td>스퍼트</td>
+              </tr>
+              <tr>
+                <td><strong>Mass</strong></td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td>균형</td>
+              </tr>
+              <tr>
+                <td><strong>Primo Valentino</strong></td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+2</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td>속도+스퍼트</td>
+              </tr>
+              <tr>
+                <td><strong>Biwa Shinseiki</strong></td>
+                <td style="color: #9df7c7;">+2</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td>지구력</td>
+              </tr>
+              <tr>
+                <td><strong>Mr. Greeley</strong></td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td>속도</td>
+              </tr>
+              <tr>
+                <td><strong>Broken Vow</strong></td>
+                <td style="color: #9df7c7;">+3</td>
+                <td style="color: #9df7c7;">+5</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td>지구력</td>
+              </tr>
+              <tr>
+                <td><strong>Ft. Stockton</strong></td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+4</td>
+                <td style="color: #9df7c7;">+3</td>
+                <td>균형</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box">
+          <strong>💡 추천:</strong><br>
+          <strong>단거리:</strong> Mr. Greeley, Primo Valentino (speed 중심)<br>
+          <strong>장거리:</strong> Vicar, Biwa Shinseiki, Broken Vow (stamina 중심)
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>궁합 체크리스트</h2>
+        <h3>✅ 좋은 궁합 조건</h3>
+        <ul class="checklist">
+          <li>말 스타일 = 기수 스타일 (완전 일치)</li>
+          <li>거리에 적합한 능력치 보유</li>
+          <li>혈통 보정치가 해당 스타일과 일치</li>
+          <li>컨디션 1.00 이상</li>
+        </ul>
+        
+        <h3>⚠️ 나쁜 궁합 조건</h3>
+        <ul class="checklist">
+          <li>말 스타일 ≠ 기수 스타일 (충돌)</li>
+          <li>부적합한 거리 (예: 선행말이 장거리)</li>
+          <li>혈통 보정치가 반대 스타일</li>
+          <li>컨디션 0.90 이하</li>
+        </ul>
+      </div>
+    </section>
+    
+    <!-- 섹션 6: 환경 -->
+    <section id="environment" class="section">
+      <h1>🌦️ 환경 요인</h1>
+      
+      <div class="card">
+        <h2>날씨 영향</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>날씨</th>
+                <th>영향</th>
+                <th>추천 능력치</th>
+                <th>추천 스타일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>☀️ <strong>맑음</strong></td>
+                <td>표준</td>
+                <td>균형</td>
+                <td>전 스타일</td>
+              </tr>
+              <tr>
+                <td>🌧️ <strong>비 (wet)</strong></td>
+                <td>피로도 +2%, 킥력 -2%</td>
+                <td>지구력 높은 말</td>
+                <td><span class="badge badge-purple">차입</span></td>
+              </tr>
+              <tr>
+                <td>❄️ <strong>눈 (snow)</strong></td>
+                <td>컨디션 -2%</td>
+                <td>스퍼트 높은 말</td>
+                <td><span class="badge badge-pink">추입</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box warning">
+          <strong>⚠️ 주의:</strong> 비/ 오는 날은 컨디션이 하하므로 컨디션 1.00 이상인 말을 우선적으로 선택하세요.
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>거리별 전략</h2>
+        
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>단거리 (1000-1400m) - 선행 스타일 우위</h4>
+            <p>초반 속도가 중요합니다. 선행 스타일은 전반 구간에서 <strong style="color: #9df7c7;">+8%</strong> 속도 보너스를 받습니다.</p>
+            <div class="tip-box info">
+              <strong>추천:</strong> speed 85+ 선행/선입 스타일 + S급 궁합
+            </div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>중거리 (1300-1700m) - 균형 중시</h4>
+            <p>속도와 지구력의 균형이 필요합니다. 선입 스타일이 안정적입니다.</p>
+            <div class="tip-box info">
+              <strong>추천:</strong> speed 80+, stamina 75+ 선입 스타일
+            </div>
+          </div>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>장거리 (1800-2000m) - 추입/차입 우위</h4>
+            <p>후반 가속이 결정적입니다. 추입 스타일은 후반에서 <strong style="color: #9df7c7;">+18%</strong> 속도 보너스를 받습니다.</p>
+            <div class="tip-box info">
+              <strong>추천:</strong> stamina 85+, burst 80+ 추입/차입 스타일 + stamina 보너스 혈통
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>트랙별 특성</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>트랙</th>
+                <th>특성</th>
+                <th>추천 스타일</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>서울</strong></td>
+                <td>표준 트랙</td>
+                <td>전 스타일</td>
+              </tr>
+              <tr>
+                <td><strong>부산</strong></td>
+                <td>코너가 급격</td>
+                <td>추입, 차입 (코너 대응)</td>
+              </tr>
+              <tr>
+                <td><strong>제주</strong></td>
+                <td>내륙 기후</td>
+                <td>컨디션 좋은 말</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 7: 연승 & 레벨 시스템 -->
+    <section id="addiction" class="section">
+      <h1>🔥 연승 & 레벨 시스템</h1>
+      
+      <div class="card card-highlight">
+        <h2>🎯 v5.2 새로운 시스템</h2>
+        <p>도트경마 v5.2에서는 분석과 실력을 바탕으로 지속 플레이하면 다양한 보상을 받을 수 있습니다!</p>
+        
+        <div class="tip-box info">
+          <strong>📌 핵심:</strong> 분석하면 20% 적중! 연승하면 보너스 팍팍!
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🔥 연승 보너스 시스템</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>연승</th>
+                <th>배수</th>
+                <th>보너스</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>3연승</td>
+                <td>1.5배</td>
+                <td>3,000원</td>
+              </tr>
+              <tr>
+                <td>5연승</td>
+                <td>2배</td>
+                <td>10,000원</td>
+              </tr>
+              <tr>
+                <td>10연승</td>
+                <td>2.5배</td>
+                <td>30,000원</td>
+              </tr>
+              <tr>
+                <td>20연승</td>
+                <td>3배</td>
+                <td>100,000원</td>
+              </tr>
+              <tr>
+                <td>50연승</td>
+                <td>4배</td>
+                <td>500,000원</td>
+              </tr>
+              <tr>
+                <td>100연승</td>
+                <td>5배</td>
+                <td>최대 500,000원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box">
+          <strong>💡 팁:</strong> 3연승부터 🔥 flame 표시가 활성화됩니다!
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>⭐ 레벨 시스템</h2>
+        <p>경주 participation,获胜, 베팅으로 XP를 획득하여 레벨이 올라갑니다.</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>레벨</th>
+                <th>필요 XP</th>
+                <th>레벨업 보상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Lv.1 → Lv.2</td>
+                <td>100 XP</td>
+                <td>10,000원</td>
+              </tr>
+              <tr>
+                <td>Lv.10</td>
+                <td>~1,000 XP</td>
+                <td>50,000원</td>
+              </tr>
+              <tr>
+                <td>Lv.30</td>
+                <td>~10,000 XP</td>
+                <td>150,000원</td>
+              </tr>
+              <tr>
+                <td>Lv.50</td>
+                <td>~50,000 XP</td>
+                <td>250,000원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <h3>XP 획득 방법</h3>
+        <ul class="checklist">
+          <li>경주 participation: +10 XP</li>
+          <li>경주 승리: +50 XP</li>
+          <li>상금 획득: +100 XP</li>
+          <li>퀘스트 보상: +50~500 XP</li>
+          <li>업적 달성: +100~1000 XP</li>
+        </ul>
+      </div>
+      
+      <div class="card">
+        <h2>📋 일일 퀘스트</h2>
+        <p>매일 3개의 퀘스트가 랜덤으로 제공됩니다.</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>퀘스트</th>
+                <th>목표</th>
+                <th>보상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>경주 승리</td>
+                <td>1~3회</td>
+                <td>5,000~15,000원</td>
+              </tr>
+              <tr>
+                <td>베팅</td>
+                <td>10만~50만원</td>
+                <td>10,000~50,000원</td>
+              </tr>
+              <tr>
+                <td>수익 달성</td>
+                <td>10만원</td>
+                <td>20,000원</td>
+              </tr>
+              <tr>
+                <td>연승</td>
+                <td>3연승</td>
+                <td>10,000원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🏆 업적 시스템</h2>
+        <p>다양한 업적을 달성하여 보상을 획득하세요!</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>카테고리</th>
+                <th>업적</th>
+                <th>보상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>승리</td>
+                <td>10/50/100/500회</td>
+                <td>5,000~500,000원</td>
+              </tr>
+              <tr>
+                <td>연승</td>
+                <td>5/10/20/50연승</td>
+                <td>10,000~500,000원</td>
+              </tr>
+              <tr>
+                <td>베팅</td>
+                <td>100만/1000만/1억</td>
+                <td>5,000~500,000원</td>
+              </tr>
+              <tr>
+                <td>로그인</td>
+                <td>7일/30일 연속</td>
+                <td>10,000~50,000원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🎁 일일 로그인 보상</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>연속 로그인</th>
+                <th>보상</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1~2일</td>
+                <td>5,000원</td>
+              </tr>
+              <tr>
+                <td>3~6일</td>
+                <td>7,000원</td>
+              </tr>
+              <tr>
+                <td>7~13일</td>
+                <td>10,000원</td>
+              </tr>
+              <tr>
+                <td>14~29일</td>
+                <td>20,000원</td>
+              </tr>
+              <tr>
+                <td>30일+</td>
+                <td>50,000원</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 8: 쿠폰 시스템 -->
+    <section id="coupon" class="section">
+      <h1>🎟️ 쿠폰 시스템</h1>
+      
+      <div class="card card-highlight">
+        <h2>💰 게임머니 충전</h2>
+        <p>쿠폰 버튼을 눌러 게임머니를 충전하세요!</p>
+        
+        <div class="tip-box info">
+          <strong>🎮 사용법:</strong> 메인 화면 우측 상단의 "💰 쿠폰" 버튼을 클릭하세요.
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🎁 무료 쿠폰</h2>
+        <p>무료 쿠폰으로 게임머니를 충전하세요!</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>쿠폰 코드</th>
+                <th>금액</th>
+                <th>설명</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>DAILY100</td>
+                <td>100원</td>
+                <td>일일 무료 쿠폰 (하루 1회)</td>
+              </tr>
+              <tr>
+                <td>WELCOME500</td>
+                <td>500원</td>
+                <td>환영 쿠폰 (1회만)</td>
+              </tr>
+              <tr>
+                <td>FIRST1000</td>
+                <td>1,000원</td>
+                <td>첫 충전 보너스 (1회만)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>💎 유료 쿠폰</h2>
+        <p>실제 금액으로 게임머니를 구매하세요!</p>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>상품</th>
+                <th>가격</th>
+                <th>충전금액</th>
+                <th>보너스</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1,000원권</td>
+                <td>1,000원</td>
+                <td>1,000원</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>5,000원권</td>
+                <td>5,000원</td>
+                <td>5,500원</td>
+                <td>+10%</td>
+              </tr>
+              <tr>
+                <td>10,000원권</td>
+                <td>10,000원</td>
+                <td>12,000원</td>
+                <td>+20%</td>
+              </tr>
+              <tr>
+                <td>30,000원권</td>
+                <td>30,000원</td>
+                <td>39,000원</td>
+                <td>+30%</td>
+              </tr>
+              <tr>
+                <td>50,000원권</td>
+                <td>50,000원</td>
+                <td>70,000원</td>
+                <td>+40%</td>
+              </tr>
+              <tr>
+                <td>100,000원권</td>
+                <td>100,000원</td>
+                <td>150,000원</td>
+                <td>+50%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip-box warning">
+          <strong>⚠️ 주의:</strong> 유료 쿠폰 구매는 실제 결제가 발생합니다. 신중하게 결정하세요.
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🔧 관리자 쿠폰</h2>
+        <p>관리자가 발행하는 특별 쿠폰입니다.</p>
+        
+        <div class="tip-box">
+          <strong>📝 형식:</strong> ADMIN_금액<br>
+          <strong>예시:</strong> ADMIN_50000 → 50,000원 충전
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>☁️ Firebase 연동</h2>
+        <p>v5.2부터는 Firebase를 통해 데이터가 클라우드에 저장됩니다.</p>
+        
+        <ul class="checklist">
+          <li>로그인 시 자동 동기화</li>
+          <li>다른 기기에서도 데이터 유지</li>
+          <li>오프라인 시 로컬 저장</li>
+          <li>다시 온라인 시 동기화</li>
+        </ul>
+        
+        <div class="tip-box info">
+          <strong>💡 팁:</strong> Google 로그인으로 접속하면 자동 cloud 동기화됩니다!
+        </div>
+      </div>
+    </section>
+    
+    <!-- 섹션 7: 빠른 팁 -->
+    <section id="tips" class="section">
+      <h1>💡 빠른 팁 (한눈에 보기)</h1>
+      
+      <div class="card card-highlight">
+        <h2>🎯 단거리 공략 (1000-1400m)</h2>
+        <div class="tip-box">
+          <strong>핵심 조합:</strong><br>
+          ✅ speed 85+<br>
+          ✅ <span class="badge badge-purple">선행</span> 또는 <span class="badge badge-green">선입</span> 스타일<br>
+          ✅ S급 궁합<br>
+          ✅ speed 보너스 혈통 (Mr. Greeley, Primo Valentino)
+        </div>
+      </div>
+      
+      <div class="card card-highlight">
+        <h2>🎯 장거리 공략 (1800-2000m)</h2>
+        <div class="tip-box">
+          <strong>핵심 조합:</strong><br>
+          ✅ stamina 85+<br>
+          ✅ <span class="badge badge-pink">추입</span> 또는 <span class="badge badge-purple">차입</span> 스타일<br>
+          ✅ burst 80+<br>
+          ✅ stamina 보너스 혈통 (Vicar, Biwa Shinseiki, Broken Vow)
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🌧️ 비 오는 날 공략</h2>
+        <div class="tip-box warning">
+          <strong>주의사항:</strong><br>
+          ⚠️ 컨디션이 하하므로 1.00 이상 필수<br>
+          ⚠️ 지구력 높은 말 우선<br>
+          ✅ stamina 보너스 혈통 선택
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>💰 배당률 팁</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>배당률</th>
+                <th>판단</th>
+                <th>전략</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color: #9df7c7;">5배 이하</strong></td>
+                <td>과소평가 ⭐</td>
+                <td>강력 추천</td>
+              </tr>
+              <tr>
+                <td><strong>5-15배</strong></td>
+                <td>적정</td>
+                <td>고려</td>
+              </tr>
+              <tr>
+                <td><strong style="color: #ffd26e;">15-30배</strong></td>
+                <td>도전적</td>
+                <td>소액 베팅</td>
+              </tr>
+              <tr>
+                <td><strong style="color: #ff6b9d;">30배 이상</strong></td>
+                <td>과대평가 ⚠️</td>
+                <td>초보자 피하기</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>📋 자금 관리 팁</h2>
+        <ul class="checklist">
+          <li>총 자금의 <strong>5% 이하</strong>로 단일 베팅</li>
+          <li>연패 시 <strong>베팅액 감소</strong> (마틴게일 금지)</li>
+          <li>일일 <strong>손실 한도</strong> 설정 (예: 30%)</li>
+          <li>이익 발생 시 <strong>일부 출금</strong> (본금 회복)</li>
+        </ul>
+        <div class="tip-box warning">
+          <strong>⚠️ 주의:</strong> 도박 중독에 조심하세요. 게임은 재미로 즐기세요!
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>🚀 초보자 성장 로드맵</h2>
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>1주차: 기본 익히기</h4>
+            <p>단승/연승만 베팅, 소액(1,000원)으로 시작, 각종 UI 파악</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>2주차: 분석 시작</h4>
+            <p>RATING 확인, 스타일-거리 적합성 파악, AI 분석 참고</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>3주차: 고급 전략</h4>
+            <p>복승 시도, 궁합 확인, 혈통 활용</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>4주차+: 고수 도전</h4>
+            <p>쌍승/삼복승, 배당률 분석, 고위험 고수익 전략</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+  </main>
+  
+  <!-- 푸터 -->
+  <footer class="footer">
+    <p>도트경마 v5.2 - 완벽 가이드</p>
+    <p style="margin-top: 8px; font-size: 11px;">© 2026 도겜유튜브 | 수학 기반 경마 시뮬레이션 | 게임은 재미로 즐기세요</p>
+  </footer>
+  
+  <script>
+    // 탭 전환 기능
+    function showSection(sectionId) {
+      // 모든 섹션 숨기기
+      const sections = document.querySelectorAll('.section');
+      sections.forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      // 모든 탭 비활성화
+      const tabs = document.querySelectorAll('.nav-tab');
+      tabs.forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // 선택한 섹션 표시
+      document.getElementById(sectionId).classList.add('active');
+      
+      // 선택한 탭 활성화
+      event.target.classList.add('active');
+      
+      // 스크롤 맨 위로
+      window.scrollTo(0, 0);
+    }
+    
+    // URL 해시로 직접 섹션 접근
+    window.addEventListener('load', function() {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        const section = document.getElementById(hash);
+        if (section) {
+          // 모든 섹션 숨기기
+          document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+          // 해당 섹션 표시
+          section.classList.add('active');
+          // 해당 탭 활성화
+          document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        }
+      }
+    });
+  </script>
+</body>
+</html>
