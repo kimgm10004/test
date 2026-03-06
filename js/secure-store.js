@@ -382,21 +382,22 @@
       }
       
       try {
-        const userRef = window.db.collection('users').doc(this._userId);
-        const dataRef = userRef.collection('secureData').doc(dataType);
-        
+        // [SDK Fix] window.db.collection().doc() → firestoreModule.doc()
+        const { doc, setDoc, serverTimestamp } = window.firestoreModule;
+        const dataRef = doc(window.db, 'users', this._userId, 'secureData', dataType);
+
         // 블록 번호 계산
         const history = await this.getBlockHistory(dataType);
         block.blockNumber = history.length + 1;
         
-        await dataRef.set({
+        await setDoc(dataRef, {
           ...block,
-          updatedAt: window.firebase?.firestore?.FieldValue?.serverTimestamp() || new Date()
+          updatedAt: serverTimestamp()
         });
         
         // 히스토리 저장
-        const historyRef = userRef.collection('secureHistory').doc(dataType);
-        await historyRef.set({
+        const historyRef = doc(window.db, 'users', this._userId, 'secureHistory', dataType);
+        await setDoc(historyRef, {
           blocks: history.slice(-this.config.maxBlockHistory),
           lastUpdated: new Date()
         });
@@ -430,13 +431,13 @@
       }
       
       try {
-        const userRef = window.db.collection('users').doc(this._userId);
-        const dataRef = userRef.collection('secureData').doc(dataType);
+        // [SDK Fix] window.db.collection().doc() → firestoreModule.doc()
+        const { doc, getDoc } = window.firestoreModule;
+        const dataRef = doc(window.db, 'users', this._userId, 'secureData', dataType);
+        const snap = await getDoc(dataRef);
         
-        const doc = await dataRef.get();
-        
-        if (doc.exists) {
-          return doc.data();
+        if (snap.exists()) {
+          return snap.data();
         }
       } catch (e) {
         console.error('[SecureStore] Firestore 로드 실패:', e);
@@ -614,10 +615,12 @@
       
       if (window.db && report.userId) {
         try {
-          const ref = window.db.collection('users').doc(report.userId)
-            .collection('security').doc('reports');
-          
-          await ref.collection('events').add({
+          // [SDK Fix] window.db.collection().doc().collection().add() → firestoreModule
+          const { doc, collection, addDoc } = window.firestoreModule;
+          const eventsRef = collection(
+            window.db, 'users', report.userId, 'security', 'reports', 'events'
+          );
+          await addDoc(eventsRef, {
             ...report,
             createdAt: new Date()
           });

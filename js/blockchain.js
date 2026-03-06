@@ -419,12 +419,12 @@ async function loadTransactionsFromFirebase() {
   }
 
   try {
-    const userRef = window.db.collection('users').doc(userId)
-      .collection('blockchain').doc('transactions');
-    
-    const doc = await userRef.get();
-    if (doc.exists && doc.data().txList) {
-      firebaseTransactions = doc.data().txList;
+    // [SDK Fix] window.db.collection().doc() → firestoreModule.doc()
+    const { doc, getDoc } = window.firestoreModule;
+    const txRef = doc(window.db, 'users', userId, 'blockchain', 'transactions');
+    const snap = await getDoc(txRef);
+    if (snap.exists() && snap.data().txList) {
+      firebaseTransactions = snap.data().txList;
       console.log('[Blockchain Firebase] 로드 완료:', firebaseTransactions.length, '건');
       return firebaseTransactions;
     }
@@ -454,15 +454,16 @@ async function saveTransactionToFirebase(tx) {
   }
 
   try {
-    const userRef = window.db.collection('users').doc(userId)
-      .collection('blockchain').doc('transactions');
+    // [SDK Fix] window.db.collection().doc() → firestoreModule.doc()
+    const { doc, getDoc, setDoc, serverTimestamp } = window.firestoreModule;
+    const txRef = doc(window.db, 'users', userId, 'blockchain', 'transactions');
     
     // 기존 트랜잭션 로드
-    const doc = await userRef.get();
+    const snap = await getDoc(txRef);
     let txList = [];
     
-    if (doc.exists && doc.data().txList) {
-      txList = doc.data().txList;
+    if (snap.exists() && snap.data().txList) {
+      txList = snap.data().txList;
     }
     
     // 새 트랜잭션 추가
@@ -472,15 +473,15 @@ async function saveTransactionToFirebase(tx) {
     
     txList.push(tx);
     
-    // 1000건 초과 시古い 것 삭제
+    // 1000건 초과 시 오래된 것 삭제
     if (txList.length > MAX_FIREBASE_TRANSACTIONS) {
       txList = txList.slice(-MAX_FIREBASE_TRANSACTIONS);
     }
     
-    // Firebase에 저장
-    await userRef.set({
+    // [SDK Fix] userRef.set() → setDoc(), FieldValue.serverTimestamp() → serverTimestamp()
+    await setDoc(txRef, {
       txList: txList,
-      lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+      lastUpdated: serverTimestamp()
     });
     
     console.log('[Blockchain Firebase] 저장 완료:', tx.type, tx.txId);
@@ -568,16 +569,16 @@ async function cleanupOldTransactions() {
   if (!window.db || !userId || userId === 'anonymous') return;
   
   try {
-    const userRef = window.db.collection('users').doc(userId)
-      .collection('blockchain').doc('transactions');
-    
-    const doc = await userRef.get();
-    if (doc.exists && doc.data().txList) {
-      let txList = doc.data().txList;
+    // [SDK Fix] window.db.collection().doc() → firestoreModule.doc()
+    const { doc, getDoc, setDoc } = window.firestoreModule;
+    const txRef = doc(window.db, 'users', userId, 'blockchain', 'transactions');
+    const snap = await getDoc(txRef);
+    if (snap.exists() && snap.data().txList) {
+      let txList = snap.data().txList;
       
       if (txList.length > MAX_FIREBASE_TRANSACTIONS) {
         txList = txList.slice(-MAX_FIREBASE_TRANSACTIONS);
-        await userRef.set({ txList: txList });
+        await setDoc(txRef, { txList: txList });
         console.log('[Blockchain] 오래된 트랜잭션 정리 완료:', txList.length, '건 유지');
       }
     }

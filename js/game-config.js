@@ -163,7 +163,7 @@
 // ─────────────────────────────────────────────
 // true: 콘솔 로그 전부 출력 (개발 중)
 // false: 경고/에러만 출력 (배포 시)
-window.DEV_MODE = true; // ← 배포 시 false로 변경
+window.DEV_MODE = false; // [Security Fix] 배포 환경 — 콘솔 로그 비활성화
 
 // 개발 모드 전용 로거
 window.devLog = function(...args) {

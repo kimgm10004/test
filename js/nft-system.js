@@ -313,7 +313,7 @@ class NFTSystem {
     }
 
     try {
-      const createNFT = window.firebaseFunctions.httpsCallable('createNFT');
+      const createNFT = window.httpsCallable(window.firebaseFunctions, 'createNFT'); // [SDK Fix]
       const result = await createNFT({ boxType, isFree });
       
       if (result.data.success) {
@@ -410,7 +410,9 @@ class NFTSystem {
 
     if (this.checkFirebaseReady()) {
       try {
-        await window.db.collection('users').doc(window.uid).collection('nfts').doc(nftId).set(nft);
+        // [SDK Fix] window.db.collection().doc() → firestoreModule.doc() + setDoc()
+        const { doc, setDoc } = window.firestoreModule;
+        await setDoc(doc(window.db, 'users', window.uid, 'nfts', nftId), nft);
         console.log('[NFT] Firestore에 저장됨:', nftId);
       } catch (err) {
         console.warn('[NFT] Firebase 저장 실패, localStorage만 사용:', err.message);
@@ -867,9 +869,10 @@ class NFTSystem {
     this.saveToLocalStorage();
     // Firebase 동기화
     if (this.checkFirebaseReady() && nft.ownerId === window.uid) {
-      window.db.collection('users').doc(window.uid)
-        .collection('nfts').doc(nft.id)
-        .update({ wins: nft.wins, races: nft.races, marketValue: nft.marketValue })
+      // [SDK Fix] window.db.collection().doc().update() → firestoreModule.updateDoc()
+      const { doc, updateDoc } = window.firestoreModule;
+      updateDoc(doc(window.db, 'users', window.uid, 'nfts', nft.id),
+        { wins: nft.wins, races: nft.races, marketValue: nft.marketValue })
         .catch(e => console.warn('[NFT] wins 동기화 실패:', e));
     }
   }
@@ -901,9 +904,10 @@ class NFTSystem {
     // Firebase 동기화
     if (this.checkFirebaseReady() && nft.ownerId === window.uid) {
       try {
-        await window.db.collection('users').doc(window.uid)
-          .collection('nfts').doc(nft.id)
-          .update({ exchangeCode: code, exchangeMeta: nft.exchangeMeta });
+        // [SDK Fix] window.db.collection().doc().update() → firestoreModule.updateDoc()
+        const { doc, updateDoc } = window.firestoreModule;
+        await updateDoc(doc(window.db, 'users', window.uid, 'nfts', nft.id),
+          { exchangeCode: code, exchangeMeta: nft.exchangeMeta });
       } catch(e) { console.warn('[NFT] 교환코드 Firebase 저장 실패:', e); }
     }
 
@@ -928,8 +932,10 @@ class NFTSystem {
     }
 
     try {
-      const snapshot = await window.db.collectionGroup('nfts')
-        .where('exchangeCode', '==', normalizedCode).get();
+      // [SDK Fix] window.db.collectionGroup().where().get() → firestoreModule query/getDocs
+      const { collectionGroup, query, where, getDocs } = window.firestoreModule;
+      const q = query(collectionGroup(window.db, 'nfts'), where('exchangeCode', '==', normalizedCode));
+      const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
         return { success: false, message: '유효하지 않은 코드입니다' };
@@ -1056,9 +1062,10 @@ class NFTSystem {
 
     // Firebase 동기화
     if (this.checkFirebaseReady() && nft.ownerId === window.uid) {
-      window.db.collection('users').doc(window.uid)
-        .collection('nfts').doc(nft.id)
-        .update({ enhanceLevel: nft.enhanceLevel, stats: nft.stats, marketValue: nft.marketValue })
+      // [SDK Fix] window.db.collection().doc().update() → firestoreModule.updateDoc()
+      const { doc, updateDoc } = window.firestoreModule;
+      updateDoc(doc(window.db, 'users', window.uid, 'nfts', nft.id),
+        { enhanceLevel: nft.enhanceLevel, stats: nft.stats, marketValue: nft.marketValue })
         .catch(e => console.warn('[NFT] 강화 동기화 실패:', e));
     }
 
@@ -1125,10 +1132,12 @@ async function loadNFTsFromFirestore() {
   if (!nftSystem || !window.db || !window.uid) return;
   
   try {
-    const snapshot = await window.db.collection('users').doc(window.uid).collection('nfts').get();
+    // [SDK Fix] window.db.collection().get() → firestoreModule collection + getDocs
+    const { collection, getDocs } = window.firestoreModule;
+    const snapshot = await getDocs(collection(window.db, 'users', window.uid, 'nfts'));
     nftSystem.myNFTs = [];
-    snapshot.forEach(doc => {
-      nftSystem.myNFTs.push({ id: doc.id, ...doc.data() });
+    snapshot.forEach(docSnap => {
+      nftSystem.myNFTs.push({ id: docSnap.id, ...docSnap.data() });
     });
     nftSystem.saveToLocalStorage();
   } catch (err) {
@@ -1657,8 +1666,10 @@ function redeemExchangeCode() {
   }
 
   const normalizedCode = code.trim().toUpperCase();
-  window.db.collectionGroup('nfts')
-    .where('exchangeCode', '==', normalizedCode).get()
+  // [SDK Fix] window.db.collectionGroup().where().get() → firestoreModule query/getDocs
+  const { collectionGroup, query, where, getDocs } = window.firestoreModule;
+  const _q = query(collectionGroup(window.db, 'nfts'), where('exchangeCode', '==', normalizedCode));
+  getDocs(_q)
     .then(function(snapshot) {
       if (snapshot.empty) {
         alert('유효하지 않은 교환 코드입니다');

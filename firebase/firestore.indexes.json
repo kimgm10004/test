@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "nfts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "exchangeCode", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

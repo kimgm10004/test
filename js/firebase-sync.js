@@ -159,15 +159,17 @@ class FirebaseSync {
     }
 
     try {
-      const { doc, setDoc, updateDoc } = window.firestoreModule || {};
-      if (!doc || !setDoc) return false;
+      // [Path Fix] 저장 경로를 로그인 읽기 경로(users/{uid}.wallet)에 맞춤
+      const { doc, updateDoc, setDoc, serverTimestamp } = window.firestoreModule || {};
+      if (!doc || !updateDoc) return false;
 
-      const walletRef = doc(window.db, 'users', window.uid, 'data', 'wallet');
-      
-      await setDoc(walletRef, {
-        amount: amount,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const userRef = doc(window.db, 'users', window.uid);
+      try {
+        await updateDoc(userRef, { wallet: amount, updatedAt: serverTimestamp() });
+      } catch {
+        // 문서가 없을 경우 생성
+        await setDoc(userRef, { wallet: amount, updatedAt: serverTimestamp() }, { merge: true });
+      }
 
       console.log('[FirebaseSync] Wallet saved:', amount);
       return true;
@@ -321,11 +323,14 @@ class FirebaseSync {
       const { doc, getDoc } = window.firestoreModule || {};
       if (!doc || !getDoc) return null;
 
-      const walletRef = doc(window.db, 'users', window.uid, 'data', 'wallet');
-      const snapshot = await getDoc(walletRef);
+      // [Path Fix] 읽기 경로를 저장 경로(users/{uid}.wallet)와 통일
+      const userRef = doc(window.db, 'users', window.uid);
+      const snapshot = await getDoc(userRef);
 
       if (snapshot.exists()) {
-        return snapshot.data();
+        const data = snapshot.data();
+        // wallet 필드만 반환 (amount 필드 하위 호환 포함)
+        return { amount: data.wallet ?? data.amount ?? null };
       }
     } catch (error) {
       console.error('[FirebaseSync] Load failed:', error);

@@ -107,15 +107,16 @@
      * Auth 상태 감시
      */
     watchAuthState() {
-      // Firebase Auth 상태 변경 시 IndexedDB 재초기화
-      if (window.firebase?.auth) {
-        window.firebase.auth().onAuthStateChanged((user) => {
-          if (user && user.uid !== this.currentUserId) {
-            this.currentUserId = user.uid;
-            this.initIndexedDB();
-          }
-        });
-      }
+      // [SDK Fix] window.firebase.auth() 제거 → window.uid 폴링으로 대체
+      const checkUid = setInterval(() => {
+        if (window.uid && window.uid !== this.currentUserId) {
+          clearInterval(checkUid);
+          this.currentUserId = window.uid;
+          this.initIndexedDB();
+        }
+      }, 300);
+      // 최대 30초 대기 후 포기
+      setTimeout(() => clearInterval(checkUid), 30000);
     }
 
     /**

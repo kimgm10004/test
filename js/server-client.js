@@ -17,8 +17,8 @@
     const { type, horses, amount } = betData;
     
     try {
-      // Cloud Function 호출
-      const placeBet = firebase.functions().httpsCallable('placeBet');
+      // [SDK Fix] firebase.functions().httpsCallable() → window.httpsCallable()
+      const placeBet = window.httpsCallable(window.firebaseFunctions, 'placeBet');
       const result = await placeBet({
         raceId: ServerState.currentRace?.id || 'race_' + Date.now(),
         betType: type,
@@ -51,7 +51,8 @@
   // ===== 쿠폰 사용 (서버 호출) =====
   async function redeemCouponServer(code) {
     try {
-      const redeemCoupon = firebase.functions().httpsCallable('redeemCoupon');
+      // [SDK Fix] firebase.functions().httpsCallable() → window.httpsCallable()
+      const redeemCoupon = window.httpsCallable(window.firebaseFunctions, 'redeemCoupon');
       const result = await redeemCoupon({ code });
       
       if (result.data.success) {
@@ -78,7 +79,8 @@
   // ===== 지갑 동기화 =====
   async function syncWallet() {
     try {
-      const getWallet = firebase.functions().httpsCallable('getWallet');
+      // [SDK Fix] firebase.functions().httpsCallable() → window.httpsCallable()
+      const getWallet = window.httpsCallable(window.firebaseFunctions, 'getWallet');
       const result = await getWallet({});
       
       if (result.data.success) {
@@ -254,15 +256,11 @@
 
   // ===== 초기화 =====
   window.addEventListener('load', () => {
-    // Firebase가 로드된 후 함수 오버라이드
+    // [SDK Fix] window.firebase 폴링 → window.firebaseFunctions 폴링
     const checkFirebase = setInterval(() => {
-      if (window.firebase && window.firebase.functions) {
+      if (window.firebaseFunctions && window.httpsCallable) {
         clearInterval(checkFirebase);
-        
-        // Functions 엔드포인트 설정 (아시아 지역)
-        firebase.app().functions('asia-northeast3');
-        
-        // 함수 오버라이드
+        // 함수 오버라이드 (DOM 준비 대기)
         setTimeout(() => {
           window.overrideBetFunctions();
           window.overrideCouponFunctions();

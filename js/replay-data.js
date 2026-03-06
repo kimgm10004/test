@@ -40,14 +40,9 @@
    * 현재 로그인한 사용자 ID 가져오기
    */
   function getCurrentUserId() {
-    if (typeof firebase !== 'undefined' && firebase.auth) {
-      const user = firebase.auth().currentUser;
-      if (user) return user.uid;
-    }
-    if (window.currentUser && window.currentUser.uid) {
-      return window.currentUser.uid;
-    }
+    // [SDK Fix] firebase.auth().currentUser 분기 제거 — window.uid로 통일
     if (window.uid) return window.uid;
+    if (window.currentUser && window.currentUser.uid) return window.currentUser.uid;
     return null;
   }
 

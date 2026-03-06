@@ -107,18 +107,19 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
 
   /* ---- Firebase ---- */
   function getFirebaseUid() {
-    try { return firebase?.auth?.()?.currentUser?.uid || null; } catch(e) { return null; }
+    return window.uid || null; // [SDK Fix] Modular SDK — window.uid 사용
   }
   function getStableRef() {
     const uid = getFirebaseUid();
-    if (!uid || !firebase?.firestore) return null;
-    return firebase.firestore().collection('stables').doc(uid);
+    if (!uid || !window.db || !window.firestoreModule) return null;
+    return window.firestoreModule.doc(window.db, 'stables', uid); // [SDK Fix]
   }
   async function saveGame() {
     const ref = getStableRef();
     if (!ref) { try { localStorage.setItem('dotStableData_v2', JSON.stringify(StableState)); } catch(e){} return; }
     try {
-      await ref.set({ ...StableState, lastSaved: Date.now() }, { merge: true });
+      // [SDK Fix] ref.set() → firestoreModule.setDoc()
+      await window.firestoreModule.setDoc(ref, { ...StableState, lastSaved: Date.now() }, { merge: true });
     } catch(err) {
       console.warn('[Stable] Firebase save failed:', err.message);
       try { localStorage.setItem('dotStableData_v2', JSON.stringify(StableState)); } catch(e){}
@@ -134,8 +135,9 @@ const HORSE_GRADES = window.GAME_CONFIG?.HORSE_GRADES ?? {
       return;
     }
     try {
-      const snap = await ref.get();
-      if (snap.exists) Object.assign(StableState, snap.data());
+      // [SDK Fix] ref.get() → firestoreModule.getDoc(), snap.exists → snap.exists()
+      const snap = await window.firestoreModule.getDoc(ref);
+      if (snap.exists()) Object.assign(StableState, snap.data());
       else {
         try { const raw = localStorage.getItem('dotStableData_v2'); if(raw) Object.assign(StableState, JSON.parse(raw)); } catch(e){}
       }
